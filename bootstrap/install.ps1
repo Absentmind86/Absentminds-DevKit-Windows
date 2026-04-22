@@ -135,6 +135,16 @@ function Install-PythonRequirements {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    pip self-upgrade exited $LASTEXITCODE (continuing)." -ForegroundColor Yellow
     }
+
+    # Uninstall any leftover flet sibling packages from previous versions.
+    # Flet split into flet-core / flet-desktop in 0.26+; pinning back to
+    # 0.25.x conflicts with those stragglers if they are not removed first.
+    $uninstallArgs = @()
+    if ($Launcher.Args.Count -gt 0) { $uninstallArgs += $Launcher.Args }
+    $uninstallArgs += @('-m', 'pip', 'uninstall', '-y', 'flet', 'flet-core', 'flet-desktop', 'flet-web', 'flet-runtime')
+    & $Launcher.Exe @uninstallArgs 1>$null 2>$null
+    # Ignore exit code — packages may not be installed, which is fine.
+
     $pipArgs = @()
     if ($Launcher.Args.Count -gt 0) { $pipArgs += $Launcher.Args }
     $pipArgs += @('-m', 'pip', 'install', '--upgrade', '--upgrade-strategy', 'eager', '-r', $req)
