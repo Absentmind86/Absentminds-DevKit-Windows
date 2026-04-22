@@ -32,7 +32,8 @@ param(
     [string] $InstallPath = (Join-Path $env:USERPROFILE 'Absentminds-DevKit-Windows'),
     [string] $Branch = 'main',
     [ValidateSet('Gui', 'Scan', 'Cli')]
-    [string] $Mode = 'Gui'
+    [string] $Mode = 'Gui',
+    [switch] $Yes
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,6 +65,27 @@ Write-Host ''
 Write-Host "Absentmind's DevKit — fresh machine bootstrap" -ForegroundColor Magenta
 Write-Host "Target: $InstallPath (branch: $Branch, mode: $Mode)" -ForegroundColor DarkGray
 Write-Host ''
+
+# --- Pre-flight confirmation -----------------------------------------------
+Write-Host 'Before the main installer can launch, this bootstrap will:' -ForegroundColor White
+Write-Host '  1. Install Git for Windows (via winget) if not already present' -ForegroundColor Gray
+Write-Host "  2. Clone the AM-DevKit repository to:" -ForegroundColor Gray
+Write-Host "       $InstallPath" -ForegroundColor DarkGray
+Write-Host '  3. Install Python 3.12 (via winget) if not already present' -ForegroundColor Gray
+Write-Host '  4. Install Python packages: rich, flet (via pip)' -ForegroundColor Gray
+Write-Host ''
+Write-Host 'These are prerequisites only. No dev tools, profiles, or Windows' -ForegroundColor Gray
+Write-Host 'sanitation will run yet — you will confirm those in the GUI.' -ForegroundColor Gray
+Write-Host ''
+
+if (-not $Yes) {
+    $confirm = Read-Host 'Proceed? [Y/N]'
+    if ($confirm -notmatch '^[Yy]') {
+        Write-Host 'Aborted by user. Nothing was installed.' -ForegroundColor Yellow
+        return
+    }
+    Write-Host ''
+}
 
 # --- Step 1: ensure git is available ---------------------------------------
 Write-Step 'Checking for git'
