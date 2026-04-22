@@ -63,34 +63,66 @@ PROFILE_HINTS: dict[str, str] = {
     "custom": "Exposes every stack's tools on the Tools tab. Pick exactly what you want.",
 }
 
-# Non-catalog add-ons each profile triggers. Surfaced in the info dialog and
-# as a note above the profile's section on the Tools tab.
-PROFILE_EXTRAS_NOTES: dict[str, str] = {
+# Always-installed core items (Layer 0-3 boot + Scoop CLI suite + common catalog
+# entries with profiles=None). Shown at the top of the Tools tab so the user
+# can see exactly what runs on every install, not just their opt-in picks.
+CORE_ALWAYS_INSTALLS: tuple[tuple[str, str], ...] = (
+    ("Git", "version control (winget)"),
+    ("Git LFS", "large-file support (winget)"),
+    ("GitHub CLI", "gh command (winget)"),
+    ("Windows Terminal", "modern terminal (winget)"),
+    ("PowerShell 7", "modern pwsh (winget)"),
+    ("OpenSSH Client", "ssh/scp (Windows capability)"),
+    ("VS Code", "editor (winget)"),
+    ("Cursor", "AI-native editor (winget)"),
+    ("VS Code extensions", "from config/vscode/extensions.json"),
+    ("Python 3.12", "runtime (winget)"),
+    ("uv", "fast Python package manager (winget)"),
+    ("pyenv-win", "Python version manager (scoop)"),
+    ("Scoop", "CLI package manager"),
+    ("Scoop CLI suite", "bat, ripgrep, fd, fzf, jq, lazygit, delta"),
+    ("Oh My Posh", "prompt theming (winget)"),
+    ("Tailscale", "zero-config VPN (winget)"),
+    ("Nerd Fonts", "icons/glyphs for terminals"),
+    ("7-Zip", "archiver (winget — common catalog)"),
+    ("Notepad++", "editor (winget — common catalog)"),
+    ("Everything", "file search (winget — common catalog)"),
+    ("DevToys", "developer utilities (winget — common catalog)"),
+    ("WinMerge", "diff/merge (winget — common catalog)"),
+    ("System restore point", "pre-install safety (toggleable)"),
+    ("Dotfiles seed", ".gitconfig / pwsh profile (toggleable)"),
+)
+
+# Non-catalog installs gated by profile. Each row is
+# (display_name, description, toggle_ui_key | None).
+# When toggle_ui_key is not None, we render a real checkbox wired to that
+# ui dict entry (the Switch in Install options). Otherwise it renders as a
+# read-only info row so the user can see what's running.
+PROFILE_IMPLICIT_INSTALLS: dict[str, tuple[tuple[str, str, str | None], ...]] = {
     "ai-ml": (
-        "Also installed automatically when ai-ml is selected:\n"
-        "  • GPU-matched PyTorch wheels (if the PyTorch-wheels option is on)\n"
-        "  • Ollama runtime (winget)\n"
-        "  • ML pip base: numpy, pandas, matplotlib, scikit-learn, jupyter, ipython "
-        "(if the ML-base option is on)\n"
-        "These are not checkboxes — they're driven by the ML toggles in Install options."
+        ("Ollama runtime", "winget — LLM serving; models not included", None),
+        ("Docker Desktop", "winget — container runtime (shared with web)", None),
+        ("kubectl", "winget — Kubernetes CLI (shared with web / systems)", None),
+        ("Helm", "winget — K8s package manager (shared)", None),
+        ("Rust toolchain", "rustup — shared across dev stacks", None),
+        ("PyTorch wheels", "GPU-matched CUDA or CPU fallback via pip", "install_ml_wheels"),
+        ("ML pip base", "numpy, pandas, matplotlib, scikit-learn, jupyter, ipython", "install_ml_base"),
     ),
     "web-fullstack": (
-        "Also installed automatically when web-fullstack is selected:\n"
-        "  • Docker Desktop (infrastructure layer)\n"
-        "  • Node LTS via nvm-windows after nvm installs"
+        ("Docker Desktop", "winget — container runtime", None),
+        ("kubectl", "winget — Kubernetes CLI", None),
+        ("Helm", "winget — K8s package manager", None),
     ),
     "systems": (
-        "Also installed automatically when systems is selected:\n"
-        "  • Rust toolchain via rustup\n"
-        "  • Visual Studio Build Tools / MSVC compiler"
+        ("kubectl", "winget — Kubernetes CLI (shared)", None),
+        ("Helm", "winget — K8s package manager (shared)", None),
+        ("Rust toolchain", "rustup", None),
     ),
     "game-dev": (
-        "Also installed automatically when game-dev is selected:\n"
-        "  • Visual Studio Build Tools (shared with systems)"
+        ("Rust toolchain", "rustup (shared across dev stacks)", None),
     ),
     "hardware-robotics": (
-        "Also installed automatically when hardware-robotics is selected:\n"
-        "  • pyserial via pip"
+        ("Rust toolchain", "rustup (shared across dev stacks)", None),
     ),
 }
 
@@ -446,13 +478,52 @@ def main_gui() -> None:
         selected_count_text = ft.Text("", size=13, italic=True)
         start_bar_count_text = ft.Text("", size=13, weight=ft.FontWeight.W_500)
 
+        def _count_profile_implicit_installs() -> int:
+            """Non-catalog add-ons that trigger for the user's selected profiles.
+
+            Counts each unique add-on once across profiles. Toggleable ML items
+            (PyTorch wheels, ML pip base) only count when their Switch is on.
+            """
+            checked = _checked_standard_profiles(ui)
+            # Also count profiles implicitly activated by desired cherry-picks.
+            needed = set(_needed_profiles_for(ui))
+            active = checked | needed
+            seen: set[str] = set()
+            count = 0
+            for pid in active:
+                for name, _desc, toggle_key in PROFILE_IMPLICIT_INSTALLS.get(pid, ()):
+                    if name in seen:
+                        continue
+                    if toggle_key:
+                        src = ui.get(toggle_key)
+                        if src is None or not bool(src.value):
+                            continue
+                    seen.add(name)
+                    count += 1
+            return count
+
         def update_selected_count() -> None:
-            n = len(desired_tools)
-            msg = f"{n} tool{'s' if n != 1 else ''} currently selected for install."
-            selected_count_text.value = msg
-            start_bar_count_text.value = msg
-            selected_count_text.update()
-            start_bar_count_text.update()
+            picked = len(desired_tools)
+            core = len(CORE_ALWAYS_INSTALLS)
+            implicit = _count_profile_implicit_installs()
+            total = picked + core + implicit
+            tools_word = "tool" if picked == 1 else "tools"
+            short = (
+                f"{picked} {tools_word} selected · "
+                f"~{total} total installs this run"
+            )
+            long = (
+                f"{picked} {tools_word} selected  (+ {core} core always install"
+                f"{f' + {implicit} profile add-ons' if implicit else ''})  "
+                f"·  ~{total} total."
+            )
+            start_bar_count_text.value = short
+            selected_count_text.value = long
+            try:
+                start_bar_count_text.update()
+                selected_count_text.update()
+            except (AssertionError, AttributeError):
+                pass
 
         def on_tool_toggle(tool: str, is_checked: bool) -> None:
             if is_checked:
@@ -503,9 +574,67 @@ def main_gui() -> None:
             update_selected_count()
             sync_all_previews()
 
+        # References to mirror-checkboxes for ml toggles, so flipping the
+        # Switch in Install options also updates these rendered checkboxes.
+        ml_linked_refs: dict[str, ft.Checkbox | None] = {
+            "install_ml_wheels": None,
+            "install_ml_base": None,
+        }
+
+        def make_core_row(name: str, desc: str) -> ft.Row:
+            return ft.Row(
+                [
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, size=14, color=ft.Colors.GREEN_400),
+                    ft.Text(name, size=13, weight=ft.FontWeight.W_500),
+                    ft.Text(
+                        f"— {desc}",
+                        size=12,
+                        italic=True,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                    ),
+                ],
+                spacing=6,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+
+        def make_implicit_row(name: str, desc: str) -> ft.Row:
+            return ft.Row(
+                [
+                    ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE, size=14, color=ft.Colors.BLUE_300),
+                    ft.Text(name, size=13, weight=ft.FontWeight.W_500),
+                    ft.Text(
+                        f"— {desc}",
+                        size=12,
+                        italic=True,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                    ),
+                ],
+                spacing=6,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+
+        def make_ml_linked_checkbox(ui_key: str, label: str, desc: str) -> ft.Checkbox:
+            src = ui[ui_key]  # the Switch in Install options
+            cb = ft.Checkbox(
+                label=f"{label} — {desc}",
+                value=bool(src.value),
+            )
+
+            def _on_change(e: ft.ControlEvent) -> None:
+                src.value = bool(e.control.value)
+                src.update()
+                update_selected_count()
+                sync_all_previews()
+
+            cb.on_change = _on_change
+            ml_linked_refs[ui_key] = cb
+            return cb
+
         def rebuild_tools_column() -> None:
             tools_host.controls.clear()
             tool_checkboxes.clear()
+            for k in ml_linked_refs:
+                ml_linked_refs[k] = None
 
             custom_mode = bool(profile_checks["custom"].value)
             active_standard_profiles = {
@@ -518,10 +647,33 @@ def main_gui() -> None:
                 )
             )
 
+            # --- Core section (always installed) ---
+            tools_host.controls.append(
+                ft.Text("Always installed (core)", weight=ft.FontWeight.BOLD, size=15)
+            )
             tools_host.controls.append(
                 ft.Text(
-                    "Opt-in: every tool starts unchecked. Tick a profile on the Profiles tab "
-                    "to bulk-select a stack, or cherry-pick below.",
+                    "These install on every run and cannot be unchecked. Shown so you "
+                    "can see the full install footprint, not just your opt-in picks.",
+                    size=12,
+                    italic=True,
+                )
+            )
+            for name, desc in CORE_ALWAYS_INSTALLS:
+                tools_host.controls.append(make_core_row(name, desc))
+
+            tools_host.controls.append(ft.Divider())
+            tools_host.controls.append(
+                ft.Text(
+                    "Profile tools (opt-in)",
+                    weight=ft.FontWeight.BOLD,
+                    size=15,
+                )
+            )
+            tools_host.controls.append(
+                ft.Text(
+                    "Every tool below starts unchecked. Tick a profile on the Profiles tab "
+                    "to bulk-select, or cherry-pick individual items.",
                     size=12,
                     italic=True,
                 )
@@ -529,12 +681,17 @@ def main_gui() -> None:
 
             any_standard_section = False
             already_rendered: set[str] = set()
+            already_rendered_implicit: set[str] = set()
             for profile_id in visible_profiles:
                 entries = [
                     e for e in _entries_for_profile(profile_id)
                     if e.tool not in already_rendered
                 ]
-                if not entries:
+                implicit_rows = [
+                    row for row in PROFILE_IMPLICIT_INSTALLS.get(profile_id, ())
+                    if row[0] not in already_rendered_implicit
+                ]
+                if not entries and not implicit_rows:
                     continue
                 any_standard_section = True
                 tools_host.controls.append(ft.Divider())
@@ -545,21 +702,31 @@ def main_gui() -> None:
                         size=15,
                     )
                 )
-                note = PROFILE_EXTRAS_NOTES.get(profile_id)
-                if note:
-                    tools_host.controls.append(
-                        ft.Container(
-                            content=ft.Text(note, size=12),
-                            padding=ft.padding.only(left=4, right=4, top=2, bottom=4),
-                            bgcolor=ft.Colors.with_opacity(0.06, ft.Colors.BLUE),
-                            border_radius=6,
-                        )
-                    )
+                # Catalog (checkable) tools
                 for entry in entries:
                     cb = make_tool_checkbox(entry)
                     tool_checkboxes[entry.tool] = cb
                     tools_host.controls.append(cb)
                     already_rendered.add(entry.tool)
+
+                # Non-catalog items: auto-installs + toggleable ML add-ons
+                if implicit_rows:
+                    tools_host.controls.append(
+                        ft.Text(
+                            "Also runs with this profile:",
+                            size=12,
+                            italic=True,
+                            color=ft.Colors.ON_SURFACE_VARIANT,
+                        )
+                    )
+                    for name, desc, toggle_key in implicit_rows:
+                        if toggle_key and toggle_key in ui:
+                            tools_host.controls.append(
+                                make_ml_linked_checkbox(toggle_key, name, desc)
+                            )
+                        else:
+                            tools_host.controls.append(make_implicit_row(name, desc))
+                        already_rendered_implicit.add(name)
 
             if not any_standard_section:
                 tools_host.controls.append(
@@ -571,7 +738,7 @@ def main_gui() -> None:
                     )
                 )
 
-            # Extras section — always visible, individually selectable.
+            # --- Extras section — always visible, individually selectable. ---
             extras = _entries_for_profile("extras")
             if extras:
                 tools_host.controls.append(ft.Divider())
@@ -659,14 +826,31 @@ def main_gui() -> None:
             skip_dotfiles,
             assume_yes,
             skip_summary,
-            ml_wheels,
-            ml_base,
             enable_wsl,
             wsl_skip,
         ):
             sw.on_change = bind_switch
         sanitation_preset_dd.on_change = bind_switch
         wsl_distro.on_change = bind_switch
+
+        def on_ml_switch_change(ui_key: str) -> Any:
+            def _handler(e: ft.ControlEvent) -> None:
+                # Mirror any linked checkbox currently rendered on the Tools tab
+                # so the two stay in sync regardless of where the user toggled.
+                linked = ml_linked_refs.get(ui_key)
+                if linked is not None:
+                    linked.value = bool(e.control.value)
+                    try:
+                        linked.update()
+                    except (AssertionError, AttributeError):
+                        pass
+                update_selected_count()
+                sync_all_previews()
+
+            return _handler
+
+        ml_wheels.on_change = on_ml_switch_change("install_ml_wheels")
+        ml_base.on_change = on_ml_switch_change("install_ml_base")
 
         def on_reuse_layer0_change(e: ft.ControlEvent) -> None:
             reuse_layer0_path.disabled = not bool(e.control.value)
