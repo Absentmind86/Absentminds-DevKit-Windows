@@ -137,7 +137,7 @@ function Install-PythonRequirements {
     }
     $pipArgs = @()
     if ($Launcher.Args.Count -gt 0) { $pipArgs += $Launcher.Args }
-    $pipArgs += @('-m', 'pip', 'install', '-r', $req)
+    $pipArgs += @('-m', 'pip', 'install', '--upgrade', '--upgrade-strategy', 'eager', '-r', $req)
     & $Launcher.Exe @pipArgs
     if ($LASTEXITCODE -ne 0) {
         throw "pip install -r requirements.txt failed (exit $LASTEXITCODE). Fix networking/pip and re-run bootstrap/install.ps1."
