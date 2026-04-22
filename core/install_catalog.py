@@ -22,6 +22,7 @@ P_GAME: Final[frozenset[str]] = frozenset({"game-dev"})
 P_HW: Final[frozenset[str]] = frozenset({"hardware-robotics"})
 P_SYS_GAME: Final[frozenset[str]] = frozenset({"systems", "game-dev"})
 P_SYS_AI_WEB: Final[frozenset[str]] = frozenset({"systems", "web-fullstack", "ai-ml"})
+P_WEB_AI_SYS: Final[frozenset[str]] = frozenset({"web-fullstack", "ai-ml", "systems"})
 P_LANG_STACK: Final[frozenset[str]] = frozenset({"systems", "game-dev", "hardware-robotics", "ai-ml", "web-fullstack"})
 P_EXTRAS: Final[frozenset[str]] = frozenset({"extras"})
 
@@ -64,6 +65,10 @@ WINGET_CATALOG: tuple[WingetCatalogEntry, ...] = (
     WingetCatalogEntry("nmap", "Insecure.Nmap", "utilities", P_SYS_GAME, "nmap.exe"),
     WingetCatalogEntry("arduino-ide", "ArduinoSA.IDE.stable", "utilities", P_HW, "arduino.exe"),
     # --- Layer 6: devops extras ---
+    # Docker / Kubernetes are now catalog-driven so the GUI can exclude them.
+    WingetCatalogEntry("docker-desktop", "Docker.DockerDesktop", "devops", P_WEB_AI, "docker.exe"),
+    WingetCatalogEntry("kubectl", "Kubernetes.kubectl", "devops", P_WEB_AI_SYS, "kubectl.exe"),
+    WingetCatalogEntry("helm", "Helm.Helm", "devops", P_WEB_AI_SYS, "helm.exe"),
     WingetCatalogEntry("postgresql-17", "PostgreSQL.PostgreSQL.17", "devops", P_WEB_AI, "psql.exe"),
     WingetCatalogEntry("redis", "Redis.Redis", "devops", P_WEB_AI, "redis-server.exe"),
     WingetCatalogEntry("mkcert", "FiloSottile.mkcert", "devops", P_WEB_AI, "mkcert.exe"),
@@ -81,6 +86,8 @@ WINGET_CATALOG: tuple[WingetCatalogEntry, ...] = (
     WingetCatalogEntry("ninja", "NinjaBuild.Ninja", "languages", P_SYS_GAME, "ninja.exe"),
     WingetCatalogEntry("unity-hub", "Unity.UnityHub", "languages", P_GAME, "Unity Hub.exe"),
     WingetCatalogEntry("godot", "GodotEngine.GodotEngine", "languages", P_GAME, "godot.exe"),
+    # --- AI/ML non-Python non-pip installs (catalog-driven for excludability) ---
+    WingetCatalogEntry("ollama", "Ollama.Ollama", "ml_stack", P_AI, "ollama.exe"),
     # --- Layer 3: editors extras ---
     WingetCatalogEntry("jetbrains-toolbox", "JetBrains.Toolbox", "editors", P_WEB_AI, "jetbrains-toolbox.exe"),
     # --- Extras (opt-in profile; PROJECT.md personal-preference stack) ---
@@ -134,6 +141,9 @@ TOOL_DISK_MB: Final[dict[str, int]] = {
     "nmap": 60,
     "arduino-ide": 500,
     # Layer 6 devops
+    "docker-desktop": 1200,
+    "kubectl": 10,
+    "helm": 15,
     "postgresql-17": 550,
     "redis": 5,
     "mkcert": 10,
@@ -151,6 +161,8 @@ TOOL_DISK_MB: Final[dict[str, int]] = {
     "ninja": 5,
     "unity-hub": 220,
     "godot": 120,
+    # ML stack
+    "ollama": 350,
     # Layer 3 editors
     "jetbrains-toolbox": 500,
     # Extras

@@ -95,15 +95,26 @@ def run_ml_stack(ctx: InstallContext, manifest: Manifest, console: Console) -> N
     )
     console.print(f"  [done] GPU detect — torch index: {report.pytorch_index_url}")
 
-    ensure_winget_package(
-        ctx,
-        manifest,
-        console,
-        tool="ollama",
-        layer="ml_stack",
-        winget_id="Ollama.Ollama",
-        detect=lambda: which("ollama.exe") is not None,
-    )
+    # Ollama is in WINGET_CATALOG (ml_stack layer) so the GUI can exclude it.
+    if "ollama" in ctx.catalog_exclude_tools:
+        manifest.record_tool(
+            tool="ollama",
+            layer="ml_stack",
+            status="skipped",
+            install_method="user-exclude",
+            notes="Excluded via --exclude-catalog-tool ollama.",
+        )
+        console.print("  [skipped] ollama — user excluded")
+    else:
+        ensure_winget_package(
+            ctx,
+            manifest,
+            console,
+            tool="ollama",
+            layer="ml_stack",
+            winget_id="Ollama.Ollama",
+            detect=lambda: which("ollama.exe") is not None,
+        )
 
     _pip_ml_base(ctx, manifest, console)
 
