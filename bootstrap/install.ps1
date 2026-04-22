@@ -117,6 +117,37 @@ if (-not $launcher) {
     throw 'Could not locate Python 3.11+ after winget install. Open a new terminal (refreshed PATH) and run bootstrap/install.ps1 again.'
 }
 
+function Install-PythonRequirements {
+    param(
+        [Parameter(Mandatory = $true)] $Launcher,
+        [Parameter(Mandatory = $true)][string] $RepoRoot
+    )
+    $req = Join-Path $RepoRoot 'requirements.txt'
+    if (-not (Test-Path -LiteralPath $req)) {
+        Write-Host "AM-DevKit: no requirements.txt found at $req (skipping pip install)." -ForegroundColor Yellow
+        return
+    }
+    Write-Host 'AM-DevKit: ensuring Python dependencies (rich, flet) ...' -ForegroundColor Cyan
+    $pipArgs = @()
+    if ($Launcher.Args.Count -gt 0) { $pipArgs += $Launcher.Args }
+    $pipArgs += @('-m', 'pip', 'install', '--upgrade', 'pip')
+    & $Launcher.Exe @pipArgs 1>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "    pip self-upgrade exited $LASTEXITCODE (continuing)." -ForegroundColor Yellow
+    }
+    $pipArgs = @()
+    if ($Launcher.Args.Count -gt 0) { $pipArgs += $Launcher.Args }
+    $pipArgs += @('-m', 'pip', 'install', '-r', $req)
+    & $Launcher.Exe @pipArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip install -r requirements.txt failed (exit $LASTEXITCODE). Fix networking/pip and re-run bootstrap/install.ps1."
+    }
+}
+
+if ($Gui -or $FullInstall) {
+    Install-PythonRequirements -Launcher $launcher -RepoRoot $RepoRoot
+}
+
 if ($Gui) {
     $GuiModule = Join-Path $RepoRoot 'core\gui.py'
     if (-not (Test-Path -LiteralPath $GuiModule)) {
