@@ -203,8 +203,14 @@ function Install-PythonRequirements {
         $uninstallArgs = @()
         if ($Launcher.Args.Count -gt 0) { $uninstallArgs += $Launcher.Args }
         $uninstallArgs += @('-m', 'pip', 'uninstall', '-y') + $fletPackages
-        & $Launcher.Exe @uninstallArgs 1>$null 2>$null
-        # Ignore exit code — some packages may not be installed, which is fine.
+        $prevEAP2 = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & $Launcher.Exe @uninstallArgs 1>$null 2>$null
+            # Ignore exit code — some packages may not be installed, which is fine.
+        } finally {
+            $ErrorActionPreference = $prevEAP2
+        }
     }
 
     $pipArgs = @()
