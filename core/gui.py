@@ -570,11 +570,11 @@ def main_gui() -> None:
             expand=True,
             tabs=[
                 ft.Tab(
-                    text="Summary",
+                    tab_content=ft.Text("Summary"),
                     content=summary_tab,
                 ),
                 ft.Tab(
-                    text="Profiles & options",
+                    tab_content=ft.Text("Profiles & options"),
                     content=ft.Container(
                         content=ft.Column(
                             [profiles_card, options_card],
@@ -587,7 +587,7 @@ def main_gui() -> None:
                     ),
                 ),
                 ft.Tab(
-                    text="Custom exclusions",
+                    tab_content=ft.Text("Custom exclusions"),
                     content=custom_tab,
                 ),
             ],
