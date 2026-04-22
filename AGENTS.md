@@ -9,7 +9,7 @@
 
 **Absentmind's DevKit (AM-DevKit)** is a Windows developer environment bootstrapper.
 
-One command. Walk away. Come back to a fully configured, GPU-intelligent, bloat-free dev environment.
+One command. Walk away. Come back to a fully configured, GPU-intelligent dev environment.
 
 It is **not**:
 - A package manager (Winget/Scoop/Choco handle that)

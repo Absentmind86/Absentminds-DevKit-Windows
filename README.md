@@ -3,7 +3,7 @@
 # Absentmind's DevKit
 
 ### *You just got a new machine. Run one thing. Walk away.*
-### *Come back to a fully configured, GPU-intelligent, bloat-free development environment.*
+### *Come back to a fully configured, GPU-intelligent development environment.*
 
 [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)]()
@@ -16,9 +16,11 @@
 
 ## What Is This?
 
-AM-DevKit is a Windows developer environment bootstrapper. It is not a package manager. It is not a dotfile manager. It is not a generic Windows tweaker.
+AM-DevKit is a **Windows developer toolkit installer**. It is not a package manager. It is not a dotfile manager. It is not a debloater.
 
 It is an **opinionated orchestration layer** that ties all of those things together — detects your hardware, makes smart decisions, installs the right stack for your work, and leaves you with a documented, reproducible environment you can restore on any future machine.
+
+Optional Windows sanitation (via CTT WinUtil) is available but off by default — the installer works perfectly without it.
 
 No other installer does all of this. Most handle apps *or* the OS — never both. None detect your GPU and install the correct ML stack automatically. Nobody ships a recoverable manifest.
 
@@ -36,10 +38,10 @@ Pre-Flight: System Restore Point created automatically
 Choose your profiles (or hit Absentmind Mode and walk away)
        │
        ▼
-Core installs: Git, VS Code, Python, Terminal, Scoop, 7-Zip
+Core installs: Git, VS Code, Python, Terminal, Scoop, 7-Zip + modern CLI suite
        │
        ▼
-Windows sanitation: bloat removed, privacy hardened, Explorer fixed
+[Optional] Windows sanitation via CTT WinUtil — off by default, fully toggleable
        │
        ▼
 Your selected profiles install in order
@@ -73,19 +75,19 @@ Select one or more. They stack. Each has an info button that shows exactly what 
 
 | Feature | CTT WinUtil | Winget | Dev Home | **AM-DevKit** |
 |---|---|---|---|---|
-| Bloat removal | ✅ | ❌ | ❌ | ✅ |
-| App installs | ❌ | ✅ | ✅ | ✅ |
 | GPU detection | ❌ | ❌ | ❌ | ✅ |
 | Correct PyTorch auto-install | ❌ | ❌ | ❌ | ✅ |
-| Install manifest | ❌ | ❌ | ❌ | ✅ |
-| System Restore Point | ❌ | ❌ | ❌ | ✅ |
+| App installs | ❌ | ✅ | ✅ | ✅ |
 | Multi-select profile system | ❌ | ❌ | Partial | ✅ |
 | Granular custom checkboxes | ❌ | ❌ | ❌ | ✅ |
+| Hardware / Robotics profile | ❌ | ❌ | ❌ | ✅ |
+| Install manifest | ❌ | ❌ | ❌ | ✅ |
+| One-command restore on new machine | ❌ | ❌ | ❌ | ✅ |
 | Post-install HTML report | ❌ | ❌ | ❌ | ✅ |
 | Path conflict auditor | ❌ | ❌ | ❌ | ✅ |
 | Dotfile seeding | ❌ | ❌ | ❌ | ✅ |
-| One-command restore on new machine | ❌ | ❌ | ❌ | ✅ |
-| Hardware / Robotics profile | ❌ | ❌ | ❌ | ✅ |
+| System Restore Point | ❌ | ❌ | ❌ | ✅ |
+| Optional Windows sanitation (CTT WinUtil) | ✅ core | ❌ | ❌ | ✅ opt-in |
 
 ---
 
@@ -166,11 +168,13 @@ Administrator privileges required for sanitation and system-level installs.
 
 > ⚠️ **Pre-release.** Review `bootstrap/install.ps1` before you run it. The default action is a Layer 0 system scan only; use `-Gui` or `-FullInstall` for more (see script comment help).
 
-**One-liner** (downloads and executes the bootstrap from `main`):
+**Fresh-machine one-liner** (installs git if missing, clones the repo, opens the GUI):
 
 ```powershell
-irm https://raw.githubusercontent.com/Absentmind86/Absentminds-DevKit-Windows/main/bootstrap/install.ps1 | iex
+irm https://raw.githubusercontent.com/Absentmind86/Absentminds-DevKit-Windows/main/bootstrap/fresh.ps1 | iex
 ```
+
+This is the recommended entry point for a brand-new Windows install. It clones the repo to `%USERPROFILE%\Absentminds-DevKit-Windows` and launches the Phase 3 GUI. Re-running it updates the local clone and re-opens the GUI.
 
 **Clone then run** (recommended if you want to read everything first):
 

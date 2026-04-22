@@ -237,7 +237,10 @@ def main_gui() -> None:
         )
         sanitation_preset_dd = ft.Dropdown(
             label="WinUtil tweak preset (when sanitation is on)",
-            options=["minimal", "standard"],
+            options=[
+                ft.dropdown.Option("minimal"),
+                ft.dropdown.Option("standard"),
+            ],
             value="minimal",
             width=400,
             disabled=True,
@@ -593,7 +596,7 @@ def main_gui() -> None:
         page.add(
             ft.Text("Absentmind's DevKit", size=22, weight=ft.FontWeight.BOLD),
             ft.Text(
-                "Review estimates, choose profiles, then run the installer in a new console.",
+                "Developer toolkit installer — choose your profiles, then run the installer in a new console.",
                 size=13,
             ),
             ft.Text(
