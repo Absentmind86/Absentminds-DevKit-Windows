@@ -343,8 +343,8 @@ def main_gui() -> None:
         )
         assume_yes    = ft.Switch(label="Assume yes / non-interactive (-y)", value=True)
         skip_summary  = ft.Switch(label="Skip pre-install summary panel", value=False)
-        ml_wheels     = ft.Switch(label="Install PyTorch wheels (when AI/ML applies)", value=False)
-        ml_base       = ft.Switch(label="Install core ML pip stack (numpy, pandas, … when AI/ML applies)", value=False)
+        ml_wheels     = ft.Switch(label="Install PyTorch wheels (when AI/ML applies)", value=True)
+        ml_base       = ft.Switch(label="Install core ML pip stack (numpy, pandas, … when AI/ML applies)", value=True)
         enable_wsl    = ft.Switch(label="Enable WSL (DISM; may require reboot)", value=False)
         wsl_distro    = ft.TextField(label="WSL distro name", value="Ubuntu", width=280)
         wsl_skip      = ft.Switch(label="Skip default distro install (DISM only)", value=False)
@@ -1221,8 +1221,30 @@ def main_gui() -> None:
             _load_results_from_disk()
             try:
                 results_manifest_field.update()
-            except Exception:
-                pass
+                page.update()
+            except Exception as e:
+                snack.content.value = f"Error refreshing results: {e}"
+                snack.open = True
+                try:
+                    page.update()
+                except Exception:
+                    pass
+
+        def _open_html_report(_: ft.ControlEvent | None = None) -> None:
+            """Open the HTML report in the default browser."""
+            import subprocess
+            report_path = _REPO_ROOT / "post-install-report.html"
+            if not report_path.is_file():
+                snack.content.value = f"Report not found: {report_path}"
+                snack.open = True
+                page.update()
+                return
+            try:
+                subprocess.Popen(["start", str(report_path)], shell=True)
+            except Exception as e:
+                snack.content.value = f"Error opening report: {e}"
+                snack.open = True
+                page.update()
 
         results_tab_content = ft.Container(
             content=ft.Column(
@@ -1236,25 +1258,13 @@ def main_gui() -> None:
                     results_manifest_field,
                     ft.OutlinedButton(
                         "Open full HTML report",
-                        on_click=lambda _: _open_html_report(),
+                        on_click=_open_html_report,
                     ),
                 ],
                 spacing=8, expand=True,
             ),
             padding=16, expand=True,
         )
-
-        def _open_html_report() -> None:
-            """Open the HTML report in the default browser."""
-            import subprocess
-            report_path = _REPO_ROOT / "post-install-report.html"
-            if report_path.is_file():
-                try:
-                    subprocess.Popen(["start", str(report_path)], shell=True)
-                except Exception as e:
-                    snack.content.value = f"Error opening report: {e}"
-                    snack.open = True
-                    page.update()
 
         tabs = ft.Tabs(
             selected_index=1,
