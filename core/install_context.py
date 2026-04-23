@@ -33,6 +33,8 @@ class InstallContext:
     catalog_exclude_tools: frozenset[str] = field(default_factory=frozenset)
     # WinUtil JSON: ``minimal`` → am-devkit-winutil.json; ``standard`` → am-devkit-winutil-standard.json
     sanitation_preset: str = "minimal"
+    # Skip rustup + rust toolchain install even when a profile would request it.
+    skip_rust: bool = False
 
     def profile_selected(self, name: str) -> bool:
         """Return True if *name* is in the resolved profile list."""

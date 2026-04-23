@@ -60,11 +60,11 @@ PROFILE_DEFS: tuple[tuple[str, str], ...] = (
 )
 
 PROFILE_HINTS: dict[str, str] = {
-    "ai-ml":             "GPU-aware PyTorch, Ollama, ML stack, Jupyter. Also installs Docker Desktop, kubectl, Helm.",
-    "web-fullstack":     "Docker Desktop, kubectl, Helm, DBs, Bruno, cloud CLIs, Node (nvm), web toolchain.",
-    "systems":           "kubectl, Helm, Rust (rustup), MSVC / C++, CMake, Wireshark, low-level infra.",
-    "game-dev":          "Unity Hub, Godot, Rust (rustup), VS Build Tools, game-focused runtimes.",
-    "hardware-robotics": "Arduino IDE, Rust (rustup), pyserial, serial/USB tooling, embedded workflow.",
+    "ai-ml":             "Ollama, GPU-aware PyTorch, ML pip stack, Jupyter, DBeaver, PostgreSQL, Redis, Docker, kubectl, Helm, cloud CLIs, Rust (rustup).",
+    "web-fullstack":     "Node via NVM, Go, JDK 21, .NET 8, Bruno, DBeaver, PostgreSQL, Redis, mkcert, ngrok, Docker, kubectl, Helm, cloud CLIs, JetBrains Toolbox.",
+    "systems":           "Rust (rustup), Go, .NET 8, JDK 21, CMake, Ninja, Docker, kubectl, Helm, Podman, Wireshark, Nmap, Sysinternals, cloud CLIs.",
+    "game-dev":          "Unity Hub, Godot, .NET 8, JDK 21, Rust (rustup), CMake, Ninja, Wireshark, JetBrains Toolbox.",
+    "hardware-robotics": "Arduino IDE, PuTTY, Rust (rustup), CMake, Ninja, Wireshark, Sysinternals, pyserial / USB tooling.",
     "custom":            "View-mode toggle — exposes every stack's tools so you can cherry-pick anything.",
 }
 
@@ -154,10 +154,11 @@ TOOL_TOOLTIPS: dict[str, str] = {
     "install_ml_base":   "Installs the core scientific Python stack via pip: numpy, pandas, matplotlib, scikit-learn, jupyter, ipython.",
 }
 
-# Rust toolchain is non-catalog (rustup) and non-toggleable today.
-# Shown as info row under profiles that trigger it.
+# Rust toolchain is non-catalog (rustup); keep this in lockstep with
+# ``core.languages._wants_rust`` so the GUI info row matches installer behaviour.
+# Toggleable via the "Skip Rust toolchain" switch (Install Options → --skip-rust).
 PROFILE_RUSTUP_PROFILES: frozenset[str] = frozenset(
-    {"ai-ml", "web-fullstack", "systems", "game-dev", "hardware-robotics"}
+    {"ai-ml", "systems", "game-dev", "hardware-robotics"}
 )
 
 
@@ -245,6 +246,7 @@ def _preview_context(ui: dict[str, Any], system_profile: dict[str, Any]) -> Any:
         assume_yes=bool(ui["assume_yes"].value),
         skip_summary=bool(ui["skip_summary"].value),
         catalog_exclude_tools=exclusions,
+        skip_rust=bool(ui["skip_rust"].value),
     )
 
 
@@ -275,6 +277,8 @@ def _argv_for_installer(ui: dict[str, Any]) -> list[str]:
             argv.extend(["--wsl-distro", (ui["wsl_distro"].value or "Ubuntu").strip() or "Ubuntu"])
     if ui["skip_dotfiles"].value:
         argv.append("--skip-dotfiles")
+    if ui["skip_rust"].value:
+        argv.append("--skip-rust")
     if ui["assume_yes"].value:
         argv.append("--yes")
     if ui["skip_summary"].value:
@@ -332,6 +336,11 @@ def main_gui() -> None:
         )
         skip_rp       = ft.Switch(label="Skip system restore point", value=False)
         skip_dotfiles = ft.Switch(label="Skip dotfile seeding", value=False)
+        skip_rust     = ft.Switch(
+            label="Skip Rust toolchain (rustup) install",
+            value=False,
+            tooltip="Do not install rustup or the stable Rust toolchain, even for systems / game-dev / hardware / AI-ML profiles.",
+        )
         assume_yes    = ft.Switch(label="Assume yes / non-interactive (-y)", value=True)
         skip_summary  = ft.Switch(label="Skip pre-install summary panel", value=False)
         ml_wheels     = ft.Switch(label="Install PyTorch wheels (when AI/ML applies)", value=False)
@@ -355,6 +364,7 @@ def main_gui() -> None:
             "sanitation_preset": sanitation_preset_dd,
             "skip_restore_point": skip_rp,
             "skip_dotfiles":     skip_dotfiles,
+            "skip_rust":         skip_rust,
             "assume_yes":        assume_yes,
             "skip_summary":      skip_summary,
             "install_ml_wheels": ml_wheels,
@@ -489,11 +499,11 @@ def main_gui() -> None:
                     dlg_body.controls.append(ft.Text("Optional extras (checkboxes):", size=13))
                     for name, desc, _flag, _key in feats:
                         dlg_body.controls.append(ft.Text(f"  • {name} — {desc}", size=12))
-                if "rustup" in PROFILE_RUSTUP_PROFILES and pid in PROFILE_RUSTUP_PROFILES:
+                if pid in PROFILE_RUSTUP_PROFILES:
                     dlg_body.controls.append(ft.Divider())
                     dlg_body.controls.append(ft.Text(
-                        "Rust toolchain (rustup) — always installs with dev profiles "
-                        "(skip toggle is future work).",
+                        "Rust toolchain (rustup) — installs with this profile by default. "
+                        "Toggle 'Skip Rust toolchain' under Install Options to opt out.",
                         size=12,
                     ))
             if info_dlg not in page.overlay:
@@ -669,8 +679,8 @@ def main_gui() -> None:
                         ft.Icon(ft.Icons.INFO_OUTLINE, size=14,
                                  color=ft.Colors.ON_SURFACE_VARIANT),
                         ft.Text(
-                            "Rust toolchain (via rustup) — always installs with this profile. "
-                            "Skip toggle is future work.",
+                            "Rust toolchain (via rustup) — installs with this profile unless "
+                            "'Skip Rust toolchain' is enabled under Install Options.",
                             size=12, italic=True, color=ft.Colors.ON_SURFACE_VARIANT,
                         ),
                     ], spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER),
@@ -844,6 +854,11 @@ def main_gui() -> None:
                         profile_checks[pid].value = True
                         for tool in _tools_for_profile(pid):
                             desired_tools.add(tool)
+                    # Also activate every feature item for this profile
+                    # (PyTorch wheels, ML pip base, etc.)  — Absentmind = everything.
+                    for _name, _desc, _flag, ui_key in PROFILE_FEATURE_ITEMS.get(pid, ()):
+                        if ui_key in ui:
+                            ui[ui_key].value = True
                 rebuild_profiles_col()
                 update_count()
                 sync_previews()
@@ -923,7 +938,7 @@ def main_gui() -> None:
             sync_previews()
 
         run_sanitation.on_change = on_sanitation_change
-        for sw in (dry_run, skip_rp, skip_dotfiles, assume_yes, skip_summary, enable_wsl, wsl_skip):
+        for sw in (dry_run, skip_rp, skip_dotfiles, skip_rust, assume_yes, skip_summary, enable_wsl, wsl_skip):
             sw.on_change = bind_switch
         sanitation_preset_dd.on_change = bind_switch
         wsl_distro.on_change = bind_switch
@@ -1131,7 +1146,7 @@ def main_gui() -> None:
                 [
                     ft.Text("Install options", weight=ft.FontWeight.BOLD, size=18),
                     dry_run, run_sanitation, sanitation_preset_dd,
-                    skip_rp, skip_dotfiles, assume_yes, skip_summary,
+                    skip_rp, skip_dotfiles, skip_rust, assume_yes, skip_summary,
                     ft.Divider(),
                     ml_wheels, ml_base,
                     ft.Divider(),

@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 
 def _wants_rust(ctx: InstallContext) -> bool:
+    if ctx.skip_rust:
+        return False
     return any(
         ctx.profile_selected(p) for p in ("systems", "game-dev", "hardware-robotics", "ai-ml")
     )
@@ -65,6 +67,15 @@ def run_languages(ctx: InstallContext, manifest: Manifest, console: Console) -> 
 
     if _wants_rust(ctx):
         ensure_rustup_default(ctx, manifest, console)
+    elif ctx.skip_rust:
+        manifest.record_tool(
+            tool="rustup-stable",
+            layer="languages",
+            status="skipped",
+            install_method="user-opt-out",
+            notes="Skipped via --skip-rust (GUI: Skip Rust toolchain).",
+        )
+        console.print("  [skipped] rustup — --skip-rust set")
     else:
         manifest.record_tool(
             tool="rustup-stable",

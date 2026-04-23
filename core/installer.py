@@ -221,6 +221,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Do not copy templates/dotfiles into the user profile.",
     )
     parser.add_argument(
+        "--skip-rust",
+        action="store_true",
+        help="Skip rustup + Rust toolchain install even when a profile would request it.",
+    )
+    parser.add_argument(
         "--reuse-system-profile",
         type=Path,
         default=None,
@@ -289,6 +294,7 @@ def main(argv: list[str] | None = None) -> int:
         assume_yes=args.yes,
         skip_summary=args.skip_summary,
         catalog_exclude_tools=catalog_excludes,
+        skip_rust=args.skip_rust,
     )
 
     console.print(

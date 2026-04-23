@@ -21,9 +21,11 @@ P_SYS: Final[frozenset[str]] = frozenset({"systems"})
 P_GAME: Final[frozenset[str]] = frozenset({"game-dev"})
 P_HW: Final[frozenset[str]] = frozenset({"hardware-robotics"})
 P_SYS_GAME: Final[frozenset[str]] = frozenset({"systems", "game-dev"})
+P_SYS_HW: Final[frozenset[str]] = frozenset({"systems", "hardware-robotics"})
 P_SYS_GAME_HW: Final[frozenset[str]] = frozenset({"systems", "game-dev", "hardware-robotics"})
 P_SYS_AI_WEB: Final[frozenset[str]] = frozenset({"systems", "web-fullstack", "ai-ml"})
 P_WEB_AI_SYS: Final[frozenset[str]] = frozenset({"web-fullstack", "ai-ml", "systems"})
+P_WEB_SYS_GAME: Final[frozenset[str]] = frozenset({"web-fullstack", "systems", "game-dev"})
 P_LANG_STACK: Final[frozenset[str]] = frozenset({"systems", "game-dev", "hardware-robotics", "ai-ml", "web-fullstack"})
 P_EXTRAS: Final[frozenset[str]] = frozenset({"extras"})
 
@@ -62,31 +64,29 @@ WINGET_CATALOG: tuple[WingetCatalogEntry, ...] = (
     WingetCatalogEntry("winmerge", "WinMerge.WinMerge", "utilities", None, "WinMergeU.exe"),
     WingetCatalogEntry("dbeaver", "dbeaver.dbeaver", "utilities", P_WEB_AI, "dbeaver.exe"),
     WingetCatalogEntry("bruno", "Bruno.Bruno", "utilities", P_WEB_AI, "Bruno.exe"),
-    WingetCatalogEntry("fork-git-client", "Fork.Fork", "utilities", P_WEB_AI, "Fork.exe"),
-    WingetCatalogEntry("keepassxc", "KeePassXCTeam.KeePassXC", "utilities", P_WEB_AI, "KeePassXC.exe"),
-    WingetCatalogEntry("sysinternals", "Microsoft.Sysinternals.Suite", "utilities", P_SYS, "procexp.exe"),
+    WingetCatalogEntry("sysinternals", "Microsoft.Sysinternals.Suite", "utilities", P_SYS_HW, "procexp.exe"),
     WingetCatalogEntry("wireshark", "WiresharkFoundation.Wireshark", "utilities", P_SYS_GAME_HW, "Wireshark.exe"),
     WingetCatalogEntry("nmap", "Insecure.Nmap", "utilities", P_SYS, "nmap.exe"),
     WingetCatalogEntry("arduino-ide", "ArduinoSA.IDE.stable", "utilities", P_HW, "arduino.exe"),
     WingetCatalogEntry("putty", "PuTTY.PuTTY", "utilities", P_HW, "putty.exe"),
     # --- Layer 6: devops extras ---
     # Docker / Kubernetes are now catalog-driven so the GUI can exclude them.
-    WingetCatalogEntry("docker-desktop", "Docker.DockerDesktop", "devops", P_WEB_AI, "docker.exe"),
+    WingetCatalogEntry("docker-desktop", "Docker.DockerDesktop", "devops", P_WEB_AI_SYS, "docker.exe"),
     WingetCatalogEntry("kubectl", "Kubernetes.kubectl", "devops", P_WEB_AI_SYS, "kubectl.exe"),
     WingetCatalogEntry("helm", "Helm.Helm", "devops", P_WEB_AI_SYS, "helm.exe"),
     WingetCatalogEntry("postgresql-17", "PostgreSQL.PostgreSQL.17", "devops", P_WEB_AI, "psql.exe"),
     WingetCatalogEntry("redis", "Redis.Redis", "devops", P_WEB_AI, "redis-server.exe"),
     WingetCatalogEntry("mkcert", "FiloSottile.mkcert", "devops", P_WEB_AI, "mkcert.exe"),
     WingetCatalogEntry("ngrok", "Ngrok.Ngrok", "devops", P_WEB_AI, "ngrok.exe"),
-    WingetCatalogEntry("aws-cli", "Amazon.AWSCLI", "devops", P_WEB_AI, "aws.exe"),
-    WingetCatalogEntry("google-cloud-sdk", "Google.CloudSDK", "devops", P_WEB_AI, "gcloud.cmd"),
-    WingetCatalogEntry("azure-cli", "Microsoft.AzureCLI", "devops", P_WEB_AI, "az.cmd"),
+    WingetCatalogEntry("aws-cli", "Amazon.AWSCLI", "devops", P_WEB_AI_SYS, "aws.exe"),
+    WingetCatalogEntry("google-cloud-sdk", "Google.CloudSDK", "devops", P_WEB_AI_SYS, "gcloud.cmd"),
+    WingetCatalogEntry("azure-cli", "Microsoft.AzureCLI", "devops", P_WEB_AI_SYS, "az.cmd"),
     WingetCatalogEntry("podman-desktop", "RedHat.Podman-Desktop", "devops", P_SYS_AI_WEB, "podman.exe"),
     # --- Layer 4: languages & build (profile-gated) ---
     WingetCatalogEntry("nvm-windows", "CoreyButler.NVMforWindows", "languages", P_WEB, "nvm.exe"),
-    WingetCatalogEntry("golang", "GoLang.Go", "languages", P_LANG_STACK, "go.exe"),
-    WingetCatalogEntry("temurin-jdk21", "EclipseAdoptium.Temurin.21.JDK", "languages", P_LANG_STACK, "java.exe"),
-    WingetCatalogEntry("dotnet-sdk-8", "Microsoft.DotNet.SDK.8", "languages", P_SYS_GAME, "dotnet.exe"),
+    WingetCatalogEntry("golang", "GoLang.Go", "languages", P_WEB_AI_SYS, "go.exe"),
+    WingetCatalogEntry("temurin-jdk21", "EclipseAdoptium.Temurin.21.JDK", "languages", P_WEB_SYS_GAME, "java.exe"),
+    WingetCatalogEntry("dotnet-sdk-8", "Microsoft.DotNet.SDK.8", "languages", P_WEB_SYS_GAME, "dotnet.exe"),
     WingetCatalogEntry("cmake", "Kitware.CMake", "languages", P_SYS_GAME_HW, "cmake.exe"),
     WingetCatalogEntry("ninja", "NinjaBuild.Ninja", "languages", P_SYS_GAME_HW, "ninja.exe"),
     WingetCatalogEntry("unity-hub", "Unity.UnityHub", "languages", P_GAME, "Unity Hub.exe"),
@@ -94,7 +94,7 @@ WINGET_CATALOG: tuple[WingetCatalogEntry, ...] = (
     # --- AI/ML non-Python non-pip installs (catalog-driven for excludability) ---
     WingetCatalogEntry("ollama", "Ollama.Ollama", "ml_stack", P_AI, "ollama.exe"),
     # --- Layer 3: editors extras ---
-    WingetCatalogEntry("jetbrains-toolbox", "JetBrains.Toolbox", "editors", P_WEB_AI, "jetbrains-toolbox.exe"),
+    WingetCatalogEntry("jetbrains-toolbox", "JetBrains.Toolbox", "editors", P_LANG_STACK, "jetbrains-toolbox.exe"),
     # --- Extras (opt-in profile; PROJECT.md personal-preference stack) ---
     WingetCatalogEntry("powertoys", "Microsoft.PowerToys", "extras", P_EXTRAS, "PowerToys.exe"),
     WingetCatalogEntry("obsidian", "Obsidian.Obsidian", "extras", P_EXTRAS, "Obsidian.exe"),
@@ -104,6 +104,8 @@ WINGET_CATALOG: tuple[WingetCatalogEntry, ...] = (
     WingetCatalogEntry("wiztree", "AntibodySoftware.WizTree", "extras", P_EXTRAS, "WizTree.exe"),
     WingetCatalogEntry("vlc", "VideoLAN.VLC", "extras", P_EXTRAS, "vlc.exe"),
     WingetCatalogEntry("bitwarden", "Bitwarden.Bitwarden", "extras", P_EXTRAS, "Bitwarden.exe"),
+    WingetCatalogEntry("keepassxc", "KeePassXCTeam.KeePassXC", "extras", P_EXTRAS, "KeePassXC.exe"),
+    WingetCatalogEntry("fork-git-client", "Fork.Fork", "extras", P_EXTRAS, "Fork.exe"),
     WingetCatalogEntry("autohotkey", "AutoHotkey.AutoHotkey", "extras", P_EXTRAS, "AutoHotkey.exe"),
     WingetCatalogEntry("discord", "Discord.Discord", "extras", P_EXTRAS, "Discord.exe"),
     WingetCatalogEntry("ffmpeg", "Gyan.FFmpeg", "extras", P_EXTRAS, "ffmpeg.exe"),
