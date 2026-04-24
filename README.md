@@ -73,21 +73,23 @@ Select one or more. They stack. Each has an info button that shows exactly what 
 
 ## What Makes This Different
 
-| Feature | CTT WinUtil | Winget | Dev Home | **AM-DevKit** |
+| Feature | Winget / Scoop | Dev Home | Hand-rolled `.ps1` | **AM-DevKit** |
 |---|---|---|---|---|
-| GPU detection | ❌ | ❌ | ❌ | ✅ |
-| Correct PyTorch auto-install | ❌ | ❌ | ❌ | ✅ |
-| App installs | ❌ | ✅ | ✅ | ✅ |
-| Multi-select profile system | ❌ | ❌ | Partial | ✅ |
-| Granular custom checkboxes | ❌ | ❌ | ❌ | ✅ |
+| GPU detection + ML stack selection | ❌ | ❌ | ⚠️ DIY | ✅ |
+| Correct PyTorch build auto-selected | ❌ | ❌ | ⚠️ DIY | ✅ |
+| App installs | ✅ | ✅ | ✅ | ✅ |
+| Developer profile system (ai-ml / web / systems / game / hw) | ❌ | Partial | ⚠️ DIY | ✅ |
+| Granular per-tool exclusions | ❌ | ❌ | ⚠️ DIY | ✅ |
 | Hardware / Robotics profile | ❌ | ❌ | ❌ | ✅ |
-| Install manifest | ❌ | ❌ | ❌ | ✅ |
-| One-command restore on new machine | ❌ | ❌ | ❌ | ✅ |
+| Install manifest (every tool, version, timestamp) | ❌ | ❌ | ❌ | ✅ |
+| One-command restore on any future machine | ❌ | ❌ | ❌ | ✅ |
 | Post-install HTML report | ❌ | ❌ | ❌ | ✅ |
-| Path conflict auditor | ❌ | ❌ | ❌ | ✅ |
-| Dotfile seeding | ❌ | ❌ | ❌ | ✅ |
-| System Restore Point | ❌ | ❌ | ❌ | ✅ |
-| Optional Windows sanitation (CTT WinUtil) | ✅ core | ❌ | ❌ | ✅ opt-in |
+| PATH conflict auditor | ❌ | ❌ | ❌ | ✅ |
+| Dotfile seeding (.gitconfig, .bashrc, PS profile) | ❌ | ❌ | ⚠️ DIY | ✅ |
+| System Restore Point (automatic, before anything runs) | ❌ | ❌ | ❌ | ✅ |
+| Optional Windows sanitation | ❌ | ❌ | ❌ | ✅ opt-in |
+
+> **On CTT WinUtil:** AM-DevKit uses [CTT WinUtil](https://github.com/ChrisTitusTech/winutil) under the hood for its optional Windows sanitation step — specifically its WPFTweaks automation layer for privacy and performance settings. CTT WinUtil is an excellent general-purpose Windows tool that also does app installs; we use it as a focused sanitation engine, not as a replacement for our installer.
 
 ---
 

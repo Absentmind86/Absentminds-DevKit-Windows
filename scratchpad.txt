@@ -36,6 +36,16 @@ COMPLETED
         README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
         Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
         schema 1.1 and the WSL reboot flow.
+- [x] Pass 15 — WSL streaming + CTT comparison chart accuracy:
+        core/pwsh_util.py: DISM and wsl --install both use stream=True so output is
+        live in the terminal; "2-5 min" / "distro download may take several minutes"
+        hints added to console messages; wsl.exe now called directly (not via
+        Start-Process) so PowerShell doesn't swallow its stdout.
+        README.md: removed CTT WinUtil from comparison chart (AM-DevKit uses it as
+        a dependency — comparing against it was incoherent and factually wrong).
+        New chart compares against Winget/Scoop, Dev Home, and hand-rolled scripts.
+        Added honest CTT note: we use its WPFTweaks layer for sanitation only, not
+        as an app installer replacement. Safety First section unchanged (accurate).
 - [x] Pass 14 — RELEASE_TESTING.md complete rewrite:
         12-section checklist: environment, static checks (pytest/ruff/py_compile/VERSION),
         winget ID smoke-test, Layer 0 + scan, CLI dry-run (all key flags), GUI (all 4 tabs

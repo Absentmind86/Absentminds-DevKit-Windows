@@ -346,9 +346,8 @@ if ($c1 -ne 0) { exit $c1 }
 if ($c2 -ne 0) { exit $c2 }
 exit 0
 """
-    console.print(f"  [installing] {tool} via DISM …")
-    code, out, err = run_powershell(ps, timeout_s=600.0)
-    tail = (out + "\n" + err).strip()[-2000:]
+    console.print(f"  [installing] {tool} via DISM (streaming output below — takes 2-5 min) …")
+    code, _out, _err = run_powershell(ps, timeout_s=600.0, stream=True)
     if code in (0, 3010):
         reboot = code == 3010
         if reboot:
@@ -358,9 +357,9 @@ exit 0
             layer="devops",
             status="installed",
             install_method="DISM",
-            notes=tail or (
+            notes=(
                 "Exit 3010 — REBOOT REQUIRED before wsl --install / Docker Desktop will work."
-                if reboot else None
+                if reboot else "DISM completed (output streamed to terminal)."
             ),
         )
         console.print(f"  [done] {tool}")
@@ -379,7 +378,7 @@ exit 0
         layer="devops",
         status="failed",
         install_method="DISM",
-        notes=f"exit {code}: {tail}",
+        notes=f"exit {code} (output streamed to terminal — check above for DISM error)",
     )
     console.print(f"  [failed] {tool} (exit {code}) — run installer elevated")
 
@@ -423,22 +422,20 @@ def ensure_wsl_default_distro(
         console.print(f"  [planned] {tool} ({d}) — dry-run")
         return
 
-    ps = f"""
-$ErrorActionPreference = 'Stop'
-$distro = '{d.replace("'", "''")}'
-$proc = Start-Process -FilePath 'wsl.exe' -ArgumentList @('--install', '-d', $distro) -PassThru -Wait -NoNewWindow
-exit $proc.ExitCode
-"""
-    console.print(f"  [installing] {tool} ({d}) via wsl.exe …")
-    code, out, err = run_powershell(ps, timeout_s=3600.0)
-    tail = (out + "\n" + err).strip()[-2000:]
+    # Run wsl.exe directly (not via Start-Process) so output streams live to terminal.
+    ps = f"wsl.exe --install -d '{d.replace(chr(39), chr(39)*2)}'"
+    console.print(
+        f"  [installing] {tool} ({d}) via wsl.exe "
+        f"(streaming output below — distro download may take several minutes) …"
+    )
+    code, _out, _err = run_powershell(ps, timeout_s=3600.0, stream=True)
     if code == 0:
         manifest.record_tool(
             tool=tool,
             layer="devops",
             status="installed",
             install_method="wsl.exe",
-            notes=tail or f"wsl --install -d {d} completed (reboot may still be required on first enable).",
+            notes=f"wsl --install -d {d} completed (output streamed; reboot may still be required on first enable).",
         )
         console.print(f"  [done] {tool}")
         return
@@ -448,7 +445,7 @@ exit $proc.ExitCode
         layer="devops",
         status="failed",
         install_method="wsl.exe",
-        notes=f"exit {code}: {tail}",
+        notes=f"exit {code} (output streamed — check terminal above for wsl.exe error)",
     )
     console.print(
         f"  [failed] {tool} (exit {code}) — if DISM just ran, reboot then re-run installer or: wsl --install -d {d}"
