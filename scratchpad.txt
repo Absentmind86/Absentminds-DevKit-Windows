@@ -36,6 +36,13 @@ COMPLETED
         README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
         Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
         schema 1.1 and the WSL reboot flow.
+- [x] Pass 14 — RELEASE_TESTING.md complete rewrite:
+        12-section checklist: environment, static checks (pytest/ruff/py_compile/VERSION),
+        winget ID smoke-test, Layer 0 + scan, CLI dry-run (all key flags), GUI (all 4 tabs
+        + failure reporter button), pre-install summary accuracy (WinUtil tweak list, WSL
+        warning), destructive smoke (systems / extras / ai-ml / sanitation), bootstrap
+        paths (fresh.ps1 + install.ps1 all modes), SmartScreen, regression trigger table,
+        sign-off template.
 - [x] Pass 13 — GUI failure reporter:
         core/gui.py: _build_issue_url() reads manifest, collects failed tools, builds
         pre-filled GitHub new-issue URL (title + body with version/profiles/failed list).

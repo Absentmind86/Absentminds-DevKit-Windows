@@ -1,48 +1,222 @@
 # Release testing (Phase 4)
 
-Use this checklist on **throwaway Windows VMs** before tagging a release. AM-DevKit changes system configuration, Winget state, and optionally CTT WinUtil tweaks — never use a production daily driver as the first validation target.
+Use this checklist on **throwaway Windows VMs** before tagging a release.
+AM-DevKit changes system configuration, Winget state, and optionally CTT WinUtil tweaks —
+never use a production daily driver as the first validation target.
 
-## Environment
+Take a VM snapshot before every destructive section so you can reset cleanly between runs.
 
-- [ ] Fresh Windows 11 (or target SKU) VM, current patches, local admin
-- [ ] Repo cloned to a short path (for example `C:\src\Absentminds-DevKit-Windows`) from [github.com/Absentmind86/Absentminds-DevKit-Windows](https://github.com/Absentmind86/Absentminds-DevKit-Windows)
-- [ ] Python 3.11+ available (or run `bootstrap/install.ps1` per README)
+---
 
-## Smoke — non-destructive
+## 1. Environment
+
+- [ ] Fresh Windows 11 (or Windows 10 build 1903+) VM, current patches, local admin
+- [ ] Repo cloned to a short path — e.g. `C:\src\Absentminds-DevKit-Windows`
+      from [github.com/Absentmind86/Absentminds-DevKit-Windows](https://github.com/Absentmind86/Absentminds-DevKit-Windows)
+- [ ] Python 3.11+ available, or run `bootstrap/install.ps1` to bootstrap it
+- [ ] `pip install -r requirements.txt` (rich + flet) for GUI tests
+
+---
+
+## 2. Static checks (non-destructive, run on any machine)
 
 From repo root:
 
-- [ ] `python core/system_scan.py --output system-profile.json` completes and produces valid JSON
-- [ ] `python scripts/gpu_detect.py` runs (note: VM may be CPU-only; expect CPU branch)
-- [ ] `python -m core.installer --dry-run --profile systems --skip-summary` exits 0, writes manifest, HTML report, path fingerprint
-- [ ] `python -m core.installer --dry-run --reuse-system-profile system-profile.json --profile systems --skip-summary` exits 0 when the JSON exists
-- [ ] `python -m core.gui` opens; Summary updates after **Run system scan**; **Run installer (new console)** starts a second console without Python tracebacks
+- [ ] `python -m pytest tests/ -v` — all 90 tests pass, 0 failures
+- [ ] `python -m ruff check core/ scripts/ tests/` — no errors
+- [ ] `python -m py_compile` passes for all non-flet modules:
+      ```powershell
+      Get-ChildItem core/*.py | Where-Object { $_.Name -ne 'gui.py' } |
+        ForEach-Object { python -m py_compile $_.FullName }
+      ```
+- [ ] `cat VERSION` matches the expected release string (e.g. `0.8.0-phase4`)
 
-## Smoke — destructive (VM only)
+---
 
-- [ ] `python -m core.installer --profile systems --yes --skip-summary` (non-dry) completes without uncaught abort; review `post-install-report.html` PATH banner
-- [ ] With `--profile extras` (and Obsidian not excluded): verify `Documents\AM-DevKit-Vault` and finalize manifest rows
-- [ ] **Sanitation:** only after explicit approval, test `--run-sanitation` with `--sanitation-preset minimal` on a disposable VM; confirm WinUtil receives `config/am-devkit-winutil.json`
+## 3. Winget ID smoke-test (requires winget + internet)
 
-## Regression triggers
+- [ ] `python scripts/smoke-test-winget-ids.py` — all IDs resolve (exit 0)
+- [ ] If any fail, update `core/install_catalog.py` before tagging
 
-Re-run the non-destructive smoke set after any change to:
+---
 
-- `core/installer.py` layer order or `InstallContext` fields
-- `core/install_catalog.py` / `core/catalog_install.py` tool ids
-- `core/sanitize.py` or WinUtil JSON presets
-- `bootstrap/install.ps1` handoff to Python
+## 4. Layer 0 + scan
 
-## SmartScreen / execution policy (per release)
+- [ ] `python core/system_scan.py --output system-profile.json` — completes,
+      produces valid JSON with `schema_version: "1.1"` and a `system` block
+- [ ] `python scripts/gpu_detect.py` — runs without traceback
+      (VM is typically CPU-only; expect CPU branch in output)
+- [ ] `python scripts/scan-all-tools.py` — runs without traceback;
+      most tools will show `[MISSING]` on a fresh VM — that's expected
 
-Scripts are not code-signed in v0.8. Verify the two bootstrap flows behave as documented:
+---
 
-- [ ] **`irm | iex` path** — run `irm <raw-url>/fresh.ps1 | iex` on a clean VM (no prior zone tag). Confirm PowerShell runs the script without a SmartScreen block. *(Expected: no block — piped scripts have no Mark-of-the-Web tag.)*
-- [ ] **Clone-then-run path** — `git clone` the repo via CLI, then `.\bootstrap\install.ps1 -Gui`. Confirm no execution policy error. *(Expected: no block — git does not attach a zone tag.)*
-- [ ] **Browser download path** — download `fresh.ps1` directly from the GitHub UI (or via `Invoke-WebRequest` to a file), then try to run it. Confirm PowerShell refuses (zone-blocked). Then run `Unblock-File .\fresh.ps1` and confirm it runs. *(Expected: blocked before unblock, succeeds after.)*
+## 5. CLI dry-run smoke (non-destructive)
+
+- [ ] `python -m core.installer --dry-run --profile systems --skip-summary`
+      exits 0, writes `devkit-manifest.json`, `post-install-report.html`,
+      and `path-fingerprint.json`
+- [ ] `python -m core.installer --dry-run --absentmind --skip-summary`
+      exits 0; manifest contains all core profiles
+- [ ] `python -m core.installer --dry-run --profile ai-ml --install-ml-wheels --skip-summary`
+      exits 0; manifest shows PyTorch rows as `planned`
+- [ ] `python -m core.installer --dry-run --profile systems --exclude-catalog-tool cursor --skip-summary`
+      exits 0; `cursor` does not appear in manifest as `planned`
+- [ ] `python -m core.installer --dry-run --reuse-system-profile system-profile.json --profile systems --skip-summary`
+      exits 0 when `system-profile.json` exists from step 4
+- [ ] `python -m core.installer --dry-run --run-sanitation --sanitation-preset minimal --profile systems --skip-summary`
+      exits 0; pre-install summary shows WinUtil tweak list (4 tweaks for minimal preset)
+
+---
+
+## 6. GUI smoke (non-destructive)
+
+- [ ] `python -m core.gui` opens without traceback
+- [ ] **Summary tab:** "Run system scan" completes; summary text populates;
+      estimated disk and step count appear; WinUtil tweak line appears when
+      sanitation is toggled on
+- [ ] **Profiles & Options tab:** all 5 profile checkboxes toggle; Absentmind Mode
+      selects all; PyTorch toggle only appears when AI/ML is checked;
+      sanitation preset radio (Minimal / Standard) toggles correctly;
+      WSL switch shows reboot caveat tooltip
+- [ ] **Custom Exclusions tab:** typing a tool ID adds it to the exclusion list;
+      preview field updates
+- [ ] **Results tab:** "Refresh results" loads the dry-run manifest from step 5;
+      status summary displays; "Open full HTML report" opens a browser tab;
+      "Report failures on GitHub" button is hidden when no failures exist
+- [ ] "Run installer (new console)" launches a second PowerShell/CMD window
+      running `--dry-run` without Python tracebacks
+
+---
+
+## 7. Pre-install summary accuracy
+
+Run interactively (without `--skip-summary`) and verify:
+
+- [ ] `python -m core.installer --dry-run --profile systems`
+      — summary panel shows correct profile list, step estimate, disk estimate
+- [ ] `python -m core.installer --dry-run --run-sanitation --sanitation-preset standard --profile systems`
+      — WinUtil tweak list shows all 13 standard preset tweaks (10 visible + "+3 more")
+- [ ] `python -m core.installer --dry-run --enable-wsl --profile systems`
+      — WSL first-time enable warning appears in summary
+
+---
+
+## 8. Destructive smoke (VM only — snapshot before each)
+
+> Reset to clean snapshot between each sub-section.
+
+### 8a. Single profile — systems
+- [ ] `python -m core.installer --profile systems --yes --skip-summary`
+      completes without uncaught layer abort; no `[red]Layer * raised` lines
+- [ ] `post-install-report.html` opens in browser; PATH banner is green (no conflicts)
+      or shows a specific conflict with the affected binaries named
+- [ ] `devkit-manifest.json` contains no `"status": "failed"` entries for catalog tools
+- [ ] `scripts/restore-devkit.ps1` exists and is non-empty
+- [ ] `scripts/restore-winget-from-manifest.ps1` exists
+
+### 8b. Extras profile
+- [ ] `python -m core.installer --profile extras --yes --skip-summary`
+- [ ] With Obsidian not excluded: `Documents\AM-DevKit-Vault` directory seeded
+- [ ] Extras tools (PowerToys, Obsidian, etc.) appear as `installed` or `skipped`
+      (already present) in manifest
+
+### 8c. AI / ML profile (opt-in wheels)
+- [ ] `python -m core.installer --profile ai-ml --install-ml-wheels --install-ml-base --yes --skip-summary`
+- [ ] Ollama appears as `installed` in manifest
+- [ ] PyTorch: verify correct variant installed (`torch-directml` on AMD/CPU VM,
+      `torch` with CPU index on CPU-only VM)
+- [ ] `python -c "import torch; print(torch.__version__)"` runs without error
+
+### 8d. Sanitation (most destructive — separate disposable VM)
+- [ ] `python -m core.installer --run-sanitation --sanitation-preset minimal --yes --skip-summary`
+- [ ] WinUtil downloads (or uses pinned release), SHA256 verified in console output
+- [ ] WinUtil applies tweaks; no uncaught exception
+- [ ] VM remains usable after sanitation (can still open Start menu, Settings, Edge)
+
+---
+
+## 9. Bootstrap paths
+
+### 9a. fresh.ps1 one-liner
+- [ ] On a VM with no repo, no Python: open PowerShell as Administrator and run:
+      ```powershell
+      irm https://raw.githubusercontent.com/Absentmind86/Absentminds-DevKit-Windows/main/bootstrap/fresh.ps1 | iex
+      ```
+- [ ] Git installs (if absent), repo clones to `%USERPROFILE%\Absentminds-DevKit-Windows`,
+      Python installs, GUI opens — no unhandled errors
+
+### 9b. install.ps1 entry points
+- [ ] `.\bootstrap\install.ps1` (no flags) — runs Layer 0 scan, writes `system-profile.json`
+- [ ] `.\bootstrap\install.ps1 -Gui` — opens Flet GUI
+- [ ] `.\bootstrap\install.ps1 -FullInstall -DryRun` — dry-run install, exits 0
+
+---
+
+## 10. SmartScreen / execution policy
+
+Scripts are not code-signed in v0.8.
+
+- [ ] **`irm | iex` path** — no SmartScreen block
+      *(no Mark-of-the-Web on piped scripts)*
+- [ ] **`git clone` then run** — no execution policy error
+      *(git does not attach a zone tag)*
+- [ ] **Browser download** — PowerShell refuses unsigned `.ps1`;
+      `Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File` fixes it;
+      re-run succeeds
 
 If any of these fail unexpectedly, update the SmartScreen section in `README.md` before releasing.
 
-## Sign-off
+---
 
-Record VM image build, Windows version, and commit SHA in the release issue or tag notes.
+## 11. Regression triggers
+
+Re-run sections 4–6 (non-destructive) after any change to:
+
+| Changed file | Re-run sections |
+|---|---|
+| `core/installer.py` layer order or `InstallContext` fields | 4, 5, 6 |
+| `core/install_catalog.py` / `core/catalog_install.py` | 3, 5 |
+| `core/sanitize.py` or WinUtil JSON presets | 5 (sanitation item), 7, 8d |
+| `bootstrap/install.ps1` or `bootstrap/fresh.ps1` | 9 |
+| `core/gui.py` | 6 |
+| `core/pre_install_summary.py` | 7 |
+| `core/system_scan.py` | 4 |
+| `VERSION` | verify `cat VERSION` in section 2 |
+
+---
+
+## 12. Sign-off template
+
+Copy into the release issue or tag notes:
+
+```
+Release: v<VERSION>
+Commit: <SHA>
+Tester: <name>
+Date: <YYYY-MM-DD>
+
+VM environment:
+  OS: Windows 11 <build> / Windows 10 <build>
+  VM host: <VMware / Hyper-V / VirtualBox / bare metal>
+  Python: <version>
+  Winget: <version> (winget --version)
+
+Sections completed:
+  [ ] 1. Environment
+  [ ] 2. Static checks
+  [ ] 3. Winget ID smoke-test
+  [ ] 4. Layer 0 + scan
+  [ ] 5. CLI dry-run smoke
+  [ ] 6. GUI smoke
+  [ ] 7. Pre-install summary accuracy
+  [ ] 8. Destructive smoke (a/b/c/d)
+  [ ] 9. Bootstrap paths
+  [ ] 10. SmartScreen
+  [ ] 11. Regression triggers (if applicable)
+
+Known issues / deviations:
+  <none | describe>
+
+Ready to tag: yes / no
+```
