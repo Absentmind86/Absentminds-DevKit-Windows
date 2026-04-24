@@ -87,10 +87,11 @@ CORE_ITEMS: tuple[tuple[str, str, str], ...] = (
     ("flet, rich", "GUI/CLI deps (pip) — already installed", "required"),
 )
 
-# Approximate count of non-catalog foundation tools that always install
-# (Git, Git LFS, GitHub CLI, Windows Terminal, PowerShell 7, OpenSSH, uv,
+# Approximate count of non-catalog foundation tools that always install:
+# Git, Git LFS, GitHub CLI, Windows Terminal, PowerShell 7, OpenSSH, uv,
 # pyenv-win, Scoop, Scoop CLI suite, Oh My Posh, Tailscale,
-# restore-point, dotfiles).
+# restore-point, dotfiles.
+# Note: Nerd Fonts is NOT currently automated (Oh My Posh degrades gracefully without it).
 FOUNDATION_ALWAYS_COUNT: int = 14
 
 # Hover tooltips shown on every catalog tool checkbox and feature toggle.
@@ -800,7 +801,7 @@ def main_gui() -> None:
                     ft.Text(
                         "Foundation (always installs): Git, Git LFS, GitHub CLI, "
                         "Windows Terminal, PowerShell 7, OpenSSH, uv, pyenv-win, "
-                        "Scoop + CLI suite, Oh My Posh, Tailscale, Nerd Fonts, "
+                        "Scoop + CLI suite, Oh My Posh, Tailscale, "
                         "restore point, dotfiles — no skip toggles yet.",
                         size=12, italic=True, color=ft.Colors.ON_SURFACE_VARIANT,
                     ),

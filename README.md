@@ -18,7 +18,7 @@
 
 AM-DevKit is a **Windows developer toolkit installer**. It is not a package manager. It is not a dotfile manager. It is not a debloater.
 
-It is an **opinionated orchestration layer** that ties all of those things together — detects your hardware, makes smart decisions, installs the right stack for your work, and leaves you with a documented, reproducible environment you can restore on any future machine.
+Think of it as **Norton Ghost for your dev stack** — one run produces a documented, reproducible environment and a restore script you can replay on any future machine. It detects your hardware, makes smart decisions, and leaves a manifest of everything it did.
 
 Optional Windows sanitation (via CTT WinUtil) is available but off by default — the installer works perfectly without it.
 

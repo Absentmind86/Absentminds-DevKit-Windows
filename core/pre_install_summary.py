@@ -261,6 +261,17 @@ def pre_install_summary_lines(ctx: InstallContext) -> list[str]:
                 "  ⚠ Free space is close to estimated usage — consider freeing up space first."
             )
 
+    # Extensions transparency — auto-installed with any editor that isn't excluded.
+    editors_excluded = {"vscode", "cursor"} <= ctx.catalog_exclude_tools
+    if not editors_excluded:
+        body_lines.append(
+            "VS Code / Cursor extensions (20): GitLens, Prettier, ESLint, ErrorLens, "
+            "Path Intellisense, Python, Pylance, Ruff, Jupyter, Auto Rename Tag, "
+            "CSS Peek, REST Client, Docker, Remote-SSH, Remote-WSL, Material Icons, "
+            "Material Theme, CodeSnap, TODO Highlight, Continue AI"
+        )
+        body_lines.append("  (extensions skipped automatically if both editors are excluded)")
+
     extras_selected = ctx.profile_selected("extras")
     body_lines.append(f"Extras (personal tools): {'yes' if extras_selected else 'no — opt-in, not part of default stacks'}")
     body_lines.append(f"Windows sanitation (CTT WinUtil): {'YES' if ctx.run_sanitation else 'no'}")

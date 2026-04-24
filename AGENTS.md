@@ -17,7 +17,7 @@ It is **not**:
 - A general-purpose Windows tweaker (CTT WinUtil handles sanitation)
 
 It **is**:
-- An opinionated orchestration layer that ties all of the above together
+- A reproducibility layer that ties all of the above together — one run, one manifest, one restore script
 - A profile-based installer that detects hardware and makes smart decisions
 - A reproducibility tool (manifest + restore script on every run)
 

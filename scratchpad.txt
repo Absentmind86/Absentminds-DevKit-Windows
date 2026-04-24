@@ -36,6 +36,12 @@ COMPLETED
         README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
         Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
         schema 1.1 and the WSL reboot flow.
+- [x] Pass 6 — Transparency + framing fixes:
+        pre_install_summary.py: extensions line (20 total, skip if both editors excluded).
+        gui.py: FOUNDATION_ALWAYS_COUNT comment corrected (Nerd Fonts NOT automated);
+        Foundation info text: "Nerd Fonts" removed from always-installs string.
+        README, AGENTS.md, docs/PROJECT.md: "opinionated orchestration layer" replaced
+        with reproducibility/portability framing ("Norton Ghost for your dev stack").
 
 
 TIER 1 — BEFORE PUBLIC RELEASE
@@ -276,11 +282,11 @@ Semi-automatic installs transparency table:
   Obsidian template  — Extras + Obsidian only, clearly scoped                 — GOOD
 
 Actions needed:
-- [ ] Pre-install summary: add explicit extensions line (20 total, skip if editor excluded)
+- [x] Pre-install summary: add explicit extensions line (20 total, skip if editor excluded) — done in Pass 6
 - [ ] Pre-install summary + GUI: show actual WinUtil tweak list when sanitation enabled
-      (tweak IDs already available via winutil_presets.get_tweaks_for_preset)
-- [ ] Remove stale Nerd Fonts references (gui.py FOUNDATION_ALWAYS_COUNT comment,
-      pre_install_summary.py comment) — already partially done in Pass 2; verify clean
+      (tweak IDs already available via winutil_presets.get_tweaks_for_preset) — scheduled Pass 9
+- [x] Remove stale Nerd Fonts references (gui.py FOUNDATION_ALWAYS_COUNT comment,
+      pre_install_summary.py comment) — done in Pass 6
 
 Framing Issue — "Opinionated" vs "Personalized + Reproducible":
 - README calls AM-DevKit an "opinionated orchestration layer" — LLMs echo this back and it
@@ -289,8 +295,7 @@ Framing Issue — "Opinionated" vs "Personalized + Reproducible":
   one preset, not the only way
 - Better frame: "Norton Ghost for your dev stack — build your perfect environment once,
   document it, reproduce it anywhere, share it with your team or future self"
-- RECOMMENDATION: Rewrite README intro + any other "opinionated" instances to lead with the
-  reproducibility/portability pitch
+- [x] RESOLVED in Pass 6: README, AGENTS.md, docs/PROJECT.md all updated to reproducibility pitch
 
 --- TRANSPARENCY AUDIT SUMMARY ---
 

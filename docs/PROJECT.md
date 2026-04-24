@@ -276,7 +276,7 @@ The litmus test for Core: *if you'd have to explain what it is to a developer, i
 
 ## Layer 1: Windows Sanitation
 
-**Method:** Invoke CTT WinUtil in unattended mode with a curated `am-devkit-winutil.json` config. We own the opinionated config — CTT handles the execution.
+**Method:** Invoke CTT WinUtil in unattended mode with a curated `am-devkit-winutil.json` config. We own the curated config — CTT handles the execution.
 
 ```powershell
 # Invocation (internal, not user-facing)
@@ -879,7 +879,7 @@ absentmind-devkit/
 │   └── sandbox.py              ← Layer 8.5: Disposable Workspace config
 │
 ├── config/
-│   ├── am-devkit-winutil.json  ← Our CTT WinUtil opinionated config
+│   ├── am-devkit-winutil.json  ← Curated CTT WinUtil config (conservative preset)
 │   ├── profiles/
 │   │   ├── ai-ml.toml
 │   │   ├── web-fullstack.toml
