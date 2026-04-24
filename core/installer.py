@@ -185,6 +185,14 @@ def main(argv: list[str] | None = None) -> int:
         help="WinUtil preset key (e.g. 'Minimal', 'Standard'). Matched against upstream preset.json at runtime.",
     )
     parser.add_argument(
+        "--winutil-latest",
+        action="store_true",
+        help=(
+            "Download and execute the live CTT WinUtil script from christitus.com instead of "
+            "the hash-verified pinned release. NO integrity check — opt-in only."
+        ),
+    )
+    parser.add_argument(
         "--skip-restore-point",
         action="store_true",
         help="Skip Checkpoint-Computer preflight step.",
@@ -281,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         run_sanitation=args.run_sanitation,
         sanitation_preset=spreset,
+        winutil_latest=args.winutil_latest,
         skip_restore_point=args.skip_restore_point,
         install_ml_wheels=args.install_ml_wheels,
         manifest_path=_REPO_ROOT / "devkit-manifest.json",

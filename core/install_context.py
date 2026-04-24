@@ -33,6 +33,8 @@ class InstallContext:
     catalog_exclude_tools: frozenset[str] = field(default_factory=frozenset)
     # WinUtil preset key (e.g. "Minimal", "Standard"). Matched case-insensitively against upstream preset.json.
     sanitation_preset: str = "Minimal"
+    # Opt into the live (unpinned) CTT WinUtil script. Default is the hash-verified pinned release.
+    winutil_latest: bool = False
     # Skip rustup + rust toolchain install even when a profile would request it.
     skip_rust: bool = False
 

@@ -234,6 +234,7 @@ def _preview_context(ui: dict[str, Any], system_profile: dict[str, Any]) -> Any:
         dry_run=bool(ui["dry_run"].value),
         run_sanitation=bool(ui["run_sanitation"].value),
         sanitation_preset=sp,
+        winutil_latest=bool(getattr(ui.get("winutil_latest"), "value", False)),
         skip_restore_point=bool(ui["skip_restore_point"].value),
         install_ml_wheels=bool(ui["install_ml_wheels"].value),
         manifest_path=_REPO_ROOT / "devkit-manifest.json",
@@ -262,6 +263,8 @@ def _argv_for_installer(ui: dict[str, Any]) -> list[str]:
         argv.append("--run-sanitation")
         sp = str(getattr(ui.get("sanitation_preset"), "value", "Minimal") or "Minimal").strip() or "Minimal"
         argv.extend(["--sanitation-preset", sp])
+        if bool(getattr(ui.get("winutil_latest"), "value", False)):
+            argv.append("--winutil-latest")
     if ui["skip_restore_point"].value:
         argv.append("--skip-restore-point")
     if ui["install_ml_wheels"].value:
@@ -333,6 +336,23 @@ def main_gui() -> None:
             "Loading WinUtil presets…",
             size=12, italic=True, color=ft.Colors.ON_SURFACE_VARIANT,
         )
+        sanitation_source_text = ft.Text(
+            "CTT WinUtil — pinned release, hash-verified.",
+            size=11, italic=True, color=ft.Colors.ON_SURFACE_VARIANT,
+        )
+        winutil_latest_sw = ft.Switch(
+            label="Use latest WinUtil (unpinned — no integrity check)",
+            value=False,
+        )
+        winutil_latest_warning = ft.Container(
+            content=ft.Text(
+                "Caution: unpinned mode downloads and executes the live CTT script "
+                "from christitus.com without a SHA256 check. Default (pinned, hash-verified) is safer.",
+                size=11, italic=True, color=ft.Colors.AMBER,
+            ),
+            visible=False,
+            padding=ft.padding.only(left=8, top=2, bottom=2),
+        )
         sanitation_presets_section = ft.Container(
             content=ft.Column([
                 ft.Row([
@@ -340,10 +360,9 @@ def main_gui() -> None:
                     sanitation_load_text,
                 ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 sanitation_preset_rg,
-                ft.Text(
-                    "Powered by CTT WinUtil (auto-updated from upstream preset.json)",
-                    size=11, italic=True, color=ft.Colors.ON_SURFACE_VARIANT,
-                ),
+                sanitation_source_text,
+                winutil_latest_sw,
+                winutil_latest_warning,
             ], spacing=6),
             visible=False,
             padding=ft.padding.only(left=8, top=6, bottom=4),
@@ -376,6 +395,7 @@ def main_gui() -> None:
             "dry_run":           dry_run,
             "run_sanitation":    run_sanitation,
             "sanitation_preset": sanitation_preset_rg,
+            "winutil_latest":    winutil_latest_sw,
             "skip_restore_point": skip_rp,
             "skip_dotfiles":     skip_dotfiles,
             "skip_rust":         skip_rust,
@@ -955,6 +975,17 @@ def main_gui() -> None:
         for sw in (dry_run, skip_rp, skip_dotfiles, skip_rust, assume_yes, skip_summary, enable_wsl, wsl_skip):
             sw.on_change = bind_switch
         sanitation_preset_rg.on_change = bind_switch
+
+        def on_winutil_latest_change(e: ft.ControlEvent) -> None:
+            winutil_latest_warning.visible = bool(e.control.value)
+            try:
+                winutil_latest_warning.update()
+            except Exception:
+                pass
+            threading.Thread(target=_load_presets_thread, daemon=True).start()
+            sync_previews()
+
+        winutil_latest_sw.on_change = on_winutil_latest_change
         wsl_distro.on_change = bind_switch
 
         def on_reuse_change(e: ft.ControlEvent) -> None:
@@ -1042,11 +1073,27 @@ def main_gui() -> None:
 
         def _load_presets_thread() -> None:
             try:
+                from core.winutil_pin import WINUTIL_TAG
                 from core.winutil_presets import fallback_presets, fetch_presets
+                latest = bool(winutil_latest_sw.value)
+                sanitation_load_text.value = "Loading WinUtil presets…"
                 try:
-                    presets = fetch_presets(timeout=6.0)
+                    sanitation_load_text.update()
+                except Exception:
+                    pass
+                try:
+                    presets = fetch_presets(latest=latest, timeout=30.0)
+                    source_note = (
+                        "CTT WinUtil — live main branch (unpinned, no integrity check)."
+                        if latest
+                        else f"CTT WinUtil — pinned release {WINUTIL_TAG}, hash-verified."
+                    )
                 except Exception:
                     presets = fallback_presets()
+                    source_note = (
+                        "CTT WinUtil — offline fallback (network unavailable). "
+                        "Install may fail if still offline at run time."
+                    )
                 controls: list[ft.Control] = []
                 for p in presets:
                     controls.append(ft.Radio(value=p.key, label=p.key))
@@ -1062,6 +1109,7 @@ def main_gui() -> None:
                 if sanitation_preset_rg.value not in keys:
                     sanitation_preset_rg.value = presets[0].key if presets else "Minimal"
                 sanitation_load_text.value = ""
+                sanitation_source_text.value = source_note
                 try:
                     sanitation_presets_section.update()
                 except Exception:

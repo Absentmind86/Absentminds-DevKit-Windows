@@ -1,8 +1,12 @@
 """CTT WinUtil preset registry.
 
-Fetches the available presets from the upstream preset.json at runtime so
-AM-DevKit automatically reflects any new presets CTT ships.  Falls back to
-hardcoded Minimal / Standard when the network is unavailable.
+Default path is the **pinned** preset.json (SHA256-verified) from the release
+AM-DevKit was tested against.  When the user opts into ``--winutil-latest``,
+this module fetches the live ``main`` branch preset.json instead — no
+integrity check, faithful to the GUI / CLI disclaimer.
+
+Falls back to hardcoded Minimal / Standard when all network paths fail so the
+GUI can still render a sensible radio list offline.
 
 Adding a polished description for a new preset only requires adding an entry
 to CURATED_DESCRIPTIONS — unknown presets get a generic fallback automatically.
@@ -12,10 +16,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
-
-PRESET_URL = (
-    "https://raw.githubusercontent.com/ChrisTitusTech/winutil/main/config/preset.json"
-)
 
 # Edit this dict to control what users see for known presets.
 # Unknown/future presets automatically get _FALLBACK_DESCRIPTION.
@@ -47,14 +47,7 @@ class PresetInfo:
         return len(self.tweaks)
 
 
-def fetch_presets(timeout: float = 6.0) -> list[PresetInfo]:
-    """Fetch the live preset list from upstream.  Raises on network failure."""
-    import json
-    import urllib.request
-
-    with urllib.request.urlopen(PRESET_URL, timeout=timeout) as resp:
-        data: dict[str, Any] = json.loads(resp.read().decode())
-
+def _parse_preset_json(data: dict[str, Any]) -> list[PresetInfo]:
     result: list[PresetInfo] = []
     for key, tweaks in data.items():
         result.append(PresetInfo(
@@ -62,8 +55,6 @@ def fetch_presets(timeout: float = 6.0) -> list[PresetInfo]:
             description=CURATED_DESCRIPTIONS.get(key, _FALLBACK_DESCRIPTION),
             tweaks=tweaks if isinstance(tweaks, list) else [],
         ))
-
-    # Stable ordering: curated presets first (in declared order), then alpha
     _order = list(CURATED_DESCRIPTIONS.keys())
     result.sort(key=lambda p: (
         _order.index(p.key) if p.key in _order else len(_order),
@@ -72,18 +63,57 @@ def fetch_presets(timeout: float = 6.0) -> list[PresetInfo]:
     return result
 
 
+def fetch_presets(*, latest: bool = False, timeout: float = 30.0) -> list[PresetInfo]:
+    """Fetch preset list. Default: pinned release (SHA256-verified).
+
+    When *latest* is True, fetch the live ``main`` branch preset.json with no
+    integrity check — this is the opt-in unpinned path surfaced through the
+    ``--winutil-latest`` flag / GUI toggle.
+    """
+    import json
+
+    if latest:
+        import urllib.request
+        from core.winutil_pin import WINUTIL_PRESET_LIVE_URL
+        with urllib.request.urlopen(WINUTIL_PRESET_LIVE_URL, timeout=timeout) as resp:
+            data: dict[str, Any] = json.loads(resp.read().decode())
+        return _parse_preset_json(data)
+
+    from core.winutil_pin import (
+        WINUTIL_PRESET_SHA256,
+        WINUTIL_PRESET_URL,
+        download_verified,
+    )
+    path = download_verified(
+        WINUTIL_PRESET_URL,
+        WINUTIL_PRESET_SHA256,
+        timeout=timeout,
+        suffix=".json",
+    )
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    finally:
+        path.unlink(missing_ok=True)
+    return _parse_preset_json(data)
+
+
 def fallback_presets() -> list[PresetInfo]:
-    """Return Minimal + Standard offline when the network is unavailable."""
+    """Hardcoded Minimal + Standard for GUI display when all network paths fail."""
     return [
         PresetInfo(key="Minimal", description=CURATED_DESCRIPTIONS["Minimal"]),
         PresetInfo(key="Standard", description=CURATED_DESCRIPTIONS["Standard"]),
     ]
 
 
-def get_tweaks_for_preset(preset_key: str, timeout: float = 6.0) -> list[str]:
+def get_tweaks_for_preset(
+    preset_key: str,
+    *,
+    latest: bool = False,
+    timeout: float = 30.0,
+) -> list[str]:
     """Return the WPFTweaks list for *preset_key* (case-insensitive), or [] on failure."""
     try:
-        presets = fetch_presets(timeout=timeout)
+        presets = fetch_presets(latest=latest, timeout=timeout)
         key_lower = preset_key.strip().lower()
         for p in presets:
             if p.key.lower() == key_lower:
