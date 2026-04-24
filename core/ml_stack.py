@@ -51,7 +51,7 @@ def _pip_ml_base(ctx: InstallContext, manifest: Manifest, console: Console) -> N
 
     import subprocess
 
-    argv = [sys.executable, "-m", "pip", "install", "--upgrade", *pkgs.split()]
+    argv = [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", *pkgs.split()]
     console.print(f"  [installing] {tool} via pip (streaming output below)…")
     proc = subprocess.run(argv, capture_output=False, text=True, timeout=3600.0)
     if proc.returncode == 0:
@@ -123,11 +123,11 @@ def run_ml_stack(ctx: InstallContext, manifest: Manifest, console: Console) -> N
         import subprocess
 
         if _is_directml:
-            argv = [sys.executable, "-m", "pip", "install", "--upgrade", "torch-directml"]
+            argv = [sys.executable, "-m", "pip", "install", "--upgrade", "--quiet", "torch-directml"]
             label = "PyTorch + DirectML (AMD GPU)"
         else:
             argv = [
-                sys.executable, "-m", "pip", "install", "--upgrade",
+                sys.executable, "-m", "pip", "install", "--upgrade", "--quiet",
                 "torch", "torchvision", "torchaudio",
                 "--index-url", report.pytorch_index_url,
             ]

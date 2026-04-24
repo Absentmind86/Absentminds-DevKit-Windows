@@ -48,6 +48,7 @@ PROFILE_PREFERENCE: tuple[str, ...] = (
     "hardware-robotics",
     "game-dev",
     "ai-ml",
+    "extras",
 )
 
 PROFILE_DEFS: tuple[tuple[str, str], ...] = (
