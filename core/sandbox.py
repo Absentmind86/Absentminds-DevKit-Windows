@@ -1,4 +1,4 @@
-"""Layer 8.5: disposable workspace templates (Phase 2)."""
+"""Layer 9: disposable workspace templates (Phase 2)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def run_sandbox(ctx: InstallContext, manifest: Manifest, console: Console) -> None:
     """Copy sandbox templates into ``<repo>/am-devkit-out/sandbox/``."""
-    console.print("[bold]Layer 8.5 — Sandbox templates[/bold]")
+    console.print("[bold]Layer 9 — Sandbox templates[/bold]")
     src = ctx.repo_root / "templates" / "sandbox"
     dst = ctx.repo_root / "am-devkit-out" / "sandbox"
     if not src.is_dir():

@@ -1,4 +1,4 @@
-"""Layer 8: dotfile seeding, PATH audit, manifest flush, HTML report (Phase 2)."""
+"""Finalize: dotfile seeding, PATH audit, manifest flush, HTML report (Phase 2)."""
 
 from __future__ import annotations
 
@@ -427,7 +427,7 @@ def run_finalize(ctx: InstallContext, manifest: Manifest, console: Console) -> d
     from core.restore_bundle import refresh_restore_script_from_disk
     from scripts.path_auditor import audit_path
 
-    console.print("[bold]Layer 8 — Finalize[/bold]")
+    console.print("[bold]Finalize[/bold]")
     _seed_dotfiles(ctx, manifest, console)
     _seed_obsidian_vault(ctx, manifest, console)
     _backup_powertoys_settings(ctx, manifest, console)

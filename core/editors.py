@@ -48,6 +48,24 @@ def _load_vscode_extension_ids(repo_root: Path) -> list[str]:
     return [str(x).strip() for x in rec if isinstance(x, str) and str(x).strip()]
 
 
+def _list_installed_extensions(cli_cmd: Path) -> frozenset[str]:
+    """Return the lowercase IDs of extensions already installed in this editor."""
+    try:
+        proc = subprocess.run(
+            ["cmd.exe", "/c", str(cli_cmd), "--list-extensions"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30.0,
+        )
+        if proc.returncode == 0:
+            return frozenset(ln.strip().lower() for ln in proc.stdout.splitlines() if ln.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return frozenset()
+
+
 def _install_extensions_via_cli(
     console: Console,
     cli_cmd: Path,
@@ -56,14 +74,20 @@ def _install_extensions_via_cli(
 ) -> tuple[int, list[str]]:
     """Install *extension_ids* via a VS Code-compatible CLI (code or cursor).
 
-    Returns ``(ok_count, failed_list)``.
+    Pre-checks which extensions are already installed and skips them to avoid
+    unnecessary network downloads. Returns ``(ok_count, failed_list)``.
     """
+    already_installed = _list_installed_extensions(cli_cmd)
     ok = 0
     failed: list[str] = []
     n = len(extension_ids)
     for i, ext in enumerate(extension_ids, 1):
+        if ext.lower() in already_installed:
+            console.print(f"    [{i}/{n}] {ext} — already installed")
+            ok += 1
+            continue
         console.print(f"    [{i}/{n}] {ext} …")
-        argv = ["cmd.exe", "/c", str(cli_cmd), "--install-extension", ext, "--force"]
+        argv = ["cmd.exe", "/c", str(cli_cmd), "--install-extension", ext]
         try:
             proc = subprocess.run(
                 argv,
@@ -75,12 +99,14 @@ def _install_extensions_via_cli(
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             failed.append(f"{ext}: {exc}")
+            console.print(f"           failed: {exc}")
             continue
         if proc.returncode == 0:
             ok += 1
         else:
             tail = (proc.stderr or proc.stdout or "").strip()[-400:]
             failed.append(f"{ext}: exit {proc.returncode} {tail}")
+            console.print(f"           failed (exit {proc.returncode})")
     return ok, failed
 
 
