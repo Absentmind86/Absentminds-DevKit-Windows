@@ -1200,7 +1200,12 @@ def main_gui() -> None:
                 lines.append("Install status summary:")
                 lines.append("-" * 70)
 
-                _ALREADY_PRESENT_NOTES = ("Already present on PATH or detector.",)
+                _ALREADY_PRESENT_NOTES = (
+                    "Already present on PATH or detector.",
+                    "already on PATH.",
+                    "already available.",
+                    "Target exists:",
+                )
 
                 def _display_status(t: dict) -> str:
                     """Reclassify 'skipped' entries that are actually pre-installed."""

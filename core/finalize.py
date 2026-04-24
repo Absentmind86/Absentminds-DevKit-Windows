@@ -292,7 +292,15 @@ def build_post_install_html(
     conflict_n = int(audit.get("conflict_count") or 0)
     banner_ok = conflict_n == 0
 
-    _ALREADY_PRESENT_MARKER = "Already present on PATH or detector."
+    _ALREADY_PRESENT_MARKERS = (
+        "Already present on PATH or detector.",
+        "already on PATH.",
+        "already available.",
+        "Target exists:",
+    )
+
+    def _is_already_present(notes: str) -> bool:
+        return any(m in notes for m in _ALREADY_PRESENT_MARKERS)
 
     def _row_class(t: dict[str, Any]) -> str:
         status = t.get("status", "")
@@ -301,7 +309,7 @@ def build_post_install_html(
             return "row-installed"
         if status == "failed":
             return "row-failed"
-        if status == "skipped" and _ALREADY_PRESENT_MARKER in notes:
+        if status == "skipped" and _is_already_present(notes):
             return "row-already"
         return ""
 
@@ -311,7 +319,7 @@ def build_post_install_html(
             status = t.get("status", "")
             notes = t.get("notes") or ""
             display_status = status
-            if status == "skipped" and _ALREADY_PRESENT_MARKER in notes:
+            if status == "skipped" and _is_already_present(notes):
                 display_status = "already installed"
             parts.append(
                 f"<tr class='{_row_class(t)}'>"
