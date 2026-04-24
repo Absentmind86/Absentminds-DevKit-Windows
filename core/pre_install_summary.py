@@ -6,6 +6,7 @@ Also exposes plain-text formatting for the Phase 3 Flet GUI (``format_pre_instal
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -62,6 +63,18 @@ def _gpu_has_cuda(profile: dict[str, Any]) -> bool:
         if "nvidia" in vendor or "nvidia" in name or "geforce" in name or "rtx" in name:
             return True
     return False
+
+
+def _is_vm(profile: dict[str, Any]) -> tuple[bool, str | None]:
+    sysblock = profile.get("system")
+    if not isinstance(sysblock, dict):
+        return False, None
+    return bool(sysblock.get("is_vm")), sysblock.get("vm_hint")
+
+
+def _wsl_already_enabled() -> bool:
+    """Heuristic: wsl.exe on PATH means the optional features were enabled previously."""
+    return shutil.which("wsl.exe") is not None or shutil.which("wsl") is not None
 
 
 def _gpu_is_amd(profile: dict[str, Any]) -> bool:
@@ -260,6 +273,26 @@ def pre_install_summary_lines(ctx: InstallContext) -> list[str]:
         )
         body_lines.append(f"WinUtil preset: {sp} ({cfg_name})")
     body_lines.append(f"WSL DISM + default distro: {'yes' if ctx.enable_wsl else 'no'}" + (f" ({ctx.wsl_default_distro})" if ctx.wsl_default_distro else ""))
+    if ctx.enable_wsl and not _wsl_already_enabled():
+        body_lines.append(
+            "  ⚠ First-time WSL enable detected — Windows will likely require a REBOOT "
+            "after DISM. If `wsl --install -d` fails with exit 3010 / 50, reboot and "
+            "re-run the installer (it will resume idempotently)."
+        )
+
+    is_vm, vm_hint = _is_vm(ctx.system_profile)
+    if is_vm and "ai-ml" in ctx.profiles and ctx.install_ml_wheels:
+        body_lines.append(
+            f"  ⚠ Running on a {vm_hint or 'virtual machine'} — without GPU passthrough, "
+            "PyTorch will install but cannot use a GPU. Consider --no-install-ml-wheels "
+            "or running on bare metal for AI/ML work."
+        )
+    if is_vm and ctx.enable_wsl:
+        body_lines.append(
+            f"  ⚠ Nested virtualization required for WSL2 inside {vm_hint or 'a VM'}. "
+            "Ensure the host hypervisor exposes VT-x/AMD-V to this guest, or WSL will fail to start."
+        )
+
     body_lines.append(f"Dry run: {'yes' if ctx.dry_run else 'no'}")
     if ctx.catalog_exclude_tools:
         tools = sorted(ctx.catalog_exclude_tools)

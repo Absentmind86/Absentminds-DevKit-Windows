@@ -25,7 +25,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Final
 
-_SCHEMA_VERSION: Final[str] = "1.0"
+_SCHEMA_VERSION: Final[str] = "1.1"
+
+# Manufacturer / model substrings (lowercase) that indicate a virtual machine.
+# Hit on Win32_ComputerSystem.Manufacturer or .Model.
+_VM_HINTS: Final[tuple[tuple[str, str], ...]] = (
+    ("vmware", "VMware"),
+    ("virtualbox", "VirtualBox"),
+    ("vbox", "VirtualBox"),
+    ("kvm", "KVM"),
+    ("qemu", "QEMU"),
+    ("xen", "Xen"),
+    ("microsoft corporation", "Hyper-V"),  # Hyper-V guests report this
+    ("virtual machine", "Hyper-V"),
+    ("parallels", "Parallels"),
+    ("bhyve", "bhyve"),
+    ("innotek", "VirtualBox"),
+)
 _LOW_DISK_BYTES: Final[int] = 20 * 1024 * 1024 * 1024
 _DRIVER_STALE_DAYS: Final[int] = 540  # ~18 months
 _WMI_QUERY_TIMEOUT_S: Final[float] = 60.0
@@ -197,6 +213,24 @@ def _as_list_of_dicts(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, dict):
         return [value]
     return []
+
+
+def _detect_vm(wmi: dict[str, Any]) -> tuple[bool, str | None]:
+    """Best-effort virtualization detection from Win32_ComputerSystem.
+
+    Returns ``(is_vm, hint)`` where *hint* is a short hypervisor name
+    ("VMware", "Hyper-V", …) or ``None`` when nothing matched.
+    """
+    cs = wmi.get("computerSystem") if isinstance(wmi.get("computerSystem"), dict) else {}
+    haystack = " ".join(
+        str(cs.get(k) or "") for k in ("Manufacturer", "Model")
+    ).lower()
+    if not haystack.strip():
+        return False, None
+    for needle, label in _VM_HINTS:
+        if needle in haystack:
+            return True, label
+    return False, None
 
 
 def _cpu_from_wmi(wmi: dict[str, Any]) -> dict[str, Any]:
@@ -465,6 +499,13 @@ def collect_warnings(
                 "NVIDIA GPU with CUDA-capable driver detected, but nvcc was not found on PATH — "
                 "PyTorch wheels bundle their own CUDA runtime; toolkit optional unless you compile extensions."
             )
+    sysblock = system_profile.get("system") if isinstance(system_profile.get("system"), dict) else {}
+    if sysblock.get("is_vm"):
+        hint = sysblock.get("vm_hint") or "virtual machine"
+        extra.append(
+            f"Virtualized host detected ({hint}). GPU passthrough is uncommon — "
+            "CUDA / DirectML wheels may fall back to CPU and WSL2 nesting may be unsupported."
+        )
     base = list(system_profile.get("warnings") or [])
     system_profile["warnings"] = list(dict.fromkeys([*base, *extra]))
     return system_profile["warnings"]
@@ -498,6 +539,14 @@ def build_system_profile(
     os_info = _os_from_wmi(wmi)
     storage = _storage_from_wmi(wmi)
     gpus = _gpus_from_wmi(wmi, vendor_from_pnp_device_id)
+    is_vm, vm_hint = _detect_vm(wmi)
+    cs = wmi.get("computerSystem") if isinstance(wmi.get("computerSystem"), dict) else {}
+    system_block: dict[str, Any] = {
+        "manufacturer": cs.get("Manufacturer"),
+        "model": cs.get("Model"),
+        "is_vm": is_vm,
+        "vm_hint": vm_hint,
+    }
 
     net_url = "https://connectivitycheck.gstatic.com/generate_204"
     net_ms, net_err = measure_http_head_latency_ms(net_url)
@@ -523,6 +572,7 @@ def build_system_profile(
             "machine": platform.machine(),
             "python_version": platform.python_version(),
         },
+        "system": system_block,
         "os": os_info,
         "cpu": cpu,
         "memory": memory,

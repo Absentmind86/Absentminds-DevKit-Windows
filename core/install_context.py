@@ -37,6 +37,10 @@ class InstallContext:
     winutil_latest: bool = False
     # Skip rustup + rust toolchain install even when a profile would request it.
     skip_rust: bool = False
+    # Set by ensure_wsl_prereq when DISM returns 3010 (reboot required). When true,
+    # downstream WSL steps (e.g. `wsl --install -d <distro>`) are deferred with a
+    # clear message instead of attempting to run on a half-enabled feature.
+    wsl_reboot_required: bool = False
 
     def profile_selected(self, name: str) -> bool:
         """Return True if *name* is in the resolved profile list."""

@@ -350,14 +350,29 @@ exit 0
     code, out, err = run_powershell(ps, timeout_s=600.0)
     tail = (out + "\n" + err).strip()[-2000:]
     if code in (0, 3010):
+        reboot = code == 3010
+        if reboot:
+            ctx.wsl_reboot_required = True
         manifest.record_tool(
             tool=tool,
             layer="devops",
             status="installed",
             install_method="DISM",
-            notes=tail or "Exit 3010 means reboot may be required before wsl --install.",
+            notes=tail or (
+                "Exit 3010 — REBOOT REQUIRED before wsl --install / Docker Desktop will work."
+                if reboot else None
+            ),
         )
-        console.print(f"  [done] {tool}" + (" (reboot may be required)" if code == 3010 else ""))
+        console.print(f"  [done] {tool}")
+        if reboot:
+            console.print(
+                "  [bold yellow]⚠ REBOOT REQUIRED:[/bold yellow] WSL / VirtualMachinePlatform "
+                "features were enabled but Windows needs a restart before WSL2 will run."
+            )
+            console.print(
+                "  [yellow]After reboot, re-run this installer with the same flags. "
+                "Idempotent steps will be skipped; WSL distro install will resume.[/yellow]"
+            )
         return
     manifest.record_tool(
         tool=tool,
@@ -381,6 +396,20 @@ def ensure_wsl_default_distro(
         return
     d = distro.strip()
     if not d:
+        return
+
+    if ctx.wsl_reboot_required:
+        manifest.record_tool(
+            tool=tool,
+            layer="devops",
+            status="skipped",
+            install_method="wsl.exe",
+            notes=f"Deferred: reboot required after DISM. After restart, re-run installer or: wsl.exe --install -d {d}",
+        )
+        console.print(
+            f"  [yellow][skipped] {tool} ({d}) — reboot first, then re-run installer "
+            f"or: wsl --install -d {d}[/yellow]"
+        )
         return
 
     if ctx.dry_run:

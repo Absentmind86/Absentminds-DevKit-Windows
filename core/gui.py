@@ -386,7 +386,16 @@ def main_gui() -> None:
         skip_summary  = ft.Switch(label="Skip pre-install summary panel", value=False)
         ml_wheels     = ft.Switch(label="Install PyTorch wheels (when AI/ML applies)", value=True)
         ml_base       = ft.Switch(label="Install core ML pip stack (numpy, pandas, … when AI/ML applies)", value=True)
-        enable_wsl    = ft.Switch(label="Enable WSL (DISM; may require reboot)", value=False)
+        enable_wsl    = ft.Switch(
+            label="Enable WSL (DISM; may require reboot)",
+            value=False,
+            tooltip=(
+                "Runs DISM to enable Microsoft-Windows-Subsystem-Linux + VirtualMachinePlatform. "
+                "First-time enable on a fresh machine almost always returns exit 3010 (REBOOT REQUIRED). "
+                "If that happens, the installer skips `wsl --install -d <distro>` with a clear message — "
+                "reboot Windows, then re-run this installer with the same flags to resume."
+            ),
+        )
         wsl_distro    = ft.TextField(label="WSL distro name", value="Ubuntu", width=280)
         wsl_skip      = ft.Switch(label="Skip default distro install (DISM only)", value=False)
         reuse_layer0  = ft.Switch(label="Reuse system profile from file (skip WMI scan)", value=False)
