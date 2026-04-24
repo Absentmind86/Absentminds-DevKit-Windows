@@ -197,6 +197,23 @@ Watch [the GitHub repository](https://github.com/Absentmind86/Absentminds-DevKit
 
 ---
 
+## Known caveats
+
+- **First-time WSL enable requires a reboot.** When you select **Enable WSL** (or pick a
+  profile that pulls in Docker Desktop / Podman Desktop), the installer runs DISM to enable
+  `Microsoft-Windows-Subsystem-Linux` + `VirtualMachinePlatform`. On a clean Windows install
+  this returns exit `3010`: the installer prints a prominent **REBOOT REQUIRED** notice,
+  defers `wsl --install -d <distro>` to avoid a half-enabled feature, and exits cleanly.
+  **Reboot Windows, then re-launch the installer with the same flags** — idempotent steps
+  skip and WSL distro install resumes.
+- **Running on a VM?** Layer 0 detects virtualized hosts (VMware, VirtualBox, Hyper-V, KVM,
+  QEMU, Xen, Parallels) and surfaces this in `system-profile.json` (`system.is_vm`). The
+  pre-install summary warns when **AI/ML + `--install-ml-wheels`** is selected on a VM
+  without GPU passthrough (PyTorch will install but won't see a GPU), and when **WSL** is
+  enabled on a guest where nested virtualization isn't exposed by the host hypervisor.
+
+---
+
 ## Roadmap
 
 - **Phase 0** ✅ — Vision, architecture, full specification

@@ -230,16 +230,19 @@ Runs silently before anything else. Generates a `system-profile.json` used by al
 - RAM: total, available
 - Storage: type (NVMe/SATA/HDD), available space
 - OS: Windows version, build number, architecture
+- **System / virtualization** (`system` block): manufacturer, model, `is_vm`, `vm_hint`
+  (matches VMware, VirtualBox, Hyper-V, KVM, QEMU, Xen, Parallels, bhyve)
 - Existing installs: scans for already-installed tools (skip, don't reinstall)
 - Driver status: GPU driver version, date
 - Internet: speed check (queue large downloads intelligently)
 
-**Outputs:** `system-profile.json` + human-readable summary shown during profile selection
+**Outputs:** `system-profile.json` (schema `1.1`) + human-readable summary shown during profile selection
 
 **Warnings generated:**
 - Low disk space (< 20GB free)
 - Outdated GPU driver
 - GPU detected but no CUDA toolkit
+- Virtualized host detected (warns that GPU passthrough is uncommon and WSL2 nesting may be unsupported)
 
 ---
 
@@ -542,8 +545,16 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ### Containers & Orchestration
 - [ ] Docker Desktop (with WSL2 backend configured)
 - [ ] ~~Docker GPU passthrough configured~~ — **not implemented**; future work
-- [ ] WSL2 enabled (Windows feature; may require reboot — user is warned, no auto-resume)
-- [ ] WSL distro install (`wsl --install -d <distro>`) — opt-in via `--enable-wsl`/`--wsl-distro`
+- [x] WSL2 enabled (DISM enables `Microsoft-Windows-Subsystem-Linux` + `VirtualMachinePlatform`).
+      First-time enable returns exit 3010 → installer prints a prominent **REBOOT REQUIRED**
+      notice, sets `ctx.wsl_reboot_required`, and defers `wsl --install -d <distro>` with a
+      clear "reboot then re-run" message instead of failing silently. No auto-resume — the
+      user re-launches the installer post-reboot and idempotent steps skip.
+- [x] WSL distro install (`wsl --install -d <distro>`) — opt-in via `--enable-wsl`/`--wsl-distro`;
+      auto-enabled when Docker Desktop or Podman Desktop is selected
+- [x] Pre-install summary warns when `--enable-wsl` is set on a host where `wsl.exe` is not
+      yet on PATH (first-time enable → reboot likely), and when the host is detected as a VM
+      (nested-virt caveat).
 - [ ] ~~WSL Seeding Toggle~~ — **not implemented**; future work
 - [ ] `kubectl`
 - [ ] `helm`

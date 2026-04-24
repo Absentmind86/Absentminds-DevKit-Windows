@@ -11,6 +11,21 @@ COMPLETED
 - [x] Opt-in unpinned mode (--winutil-latest) with caution
 - [x] GUI RadioGroup + preset loader thread
 - [x] Sanitizer documentation (trust model, fallback paths)
+- [x] Pass 4 — WSL reboot handling (commit a498ae1):
+        DISM exit 3010 sets ctx.wsl_reboot_required, prints prominent REBOOT REQUIRED
+        notice; ensure_wsl_default_distro defers to "skipped" with clear resume
+        message; pre-install summary warns when --enable-wsl is set and wsl.exe is
+        not yet on PATH; GUI WSL switch tooltip explains the reboot/resume cycle.
+- [x] Pass 4 — VM detection (commit a498ae1):
+        system-profile schema bumped 1.0 -> 1.1; new `system` block with
+        manufacturer/model/is_vm/vm_hint covering VMware, VirtualBox, Hyper-V,
+        KVM/QEMU, Xen, Parallels, bhyve; Layer-0 warning on VM hit;
+        pre-install summary warns on VM + ai-ml + --install-ml-wheels (no GPU
+        passthrough) and VM + --enable-wsl (nested-virt caveat).
+- [x] Pass 4 — docs sync (this commit):
+        README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
+        Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
+        schema 1.1 and the WSL reboot flow.
 
 
 TIER 1 — BEFORE PUBLIC RELEASE
@@ -183,21 +198,17 @@ winutil_pin.py + winutil_presets.py: consider merging (both deal with WinUtil co
 
 --- CRITICAL GAPS (PRE-RELEASE BLOCKERS) ---
 
-WSL restart handling — no resume logic:
-- DISM runs with /norestart (correct) and exit 3010 is noted (pwsh_util.py:358-360)
-- BUT: no prompt, no pause, no resume-after-reboot orchestration
-- On fresh machines WSL enable + Docker install may silently fail or require manual re-run
-- Should warn user explicitly in pre-install summary that a reboot + re-run may be required
-  when WSL is being enabled for the first time
+[x] WSL restart handling — RESOLVED in Pass 4 (commit a498ae1):
+    DISM exit 3010 now sets ctx.wsl_reboot_required, prints REBOOT REQUIRED notice,
+    and ensure_wsl_default_distro defers cleanly with "reboot then re-run" message.
+    Pre-install summary warns on first-time enable. No auto-resume — user re-runs
+    installer post-reboot and idempotent steps skip.
 
-VM detection gap:
-- system_scan.py collects Win32_ComputerSystem.Manufacturer + Model (lines 104-105, 287)
-  which often contains "VMware", "VirtualBox", "Microsoft Corporation" etc.
-- This data is NEVER used to set any is_vm flag in system-profile.json or InstallContext
-- gpu_detect.py has no VM/hypervisor detection
-- On VMs: GPU detection usually falls back to CPU safely, but no warning is shown
-- Recommendation: Add is_vm detection in system_scan.py using existing Manufacturer/Model
-  data; surface warning in GUI/summary when ai-ml + --install-ml-wheels selected on a VM
+[x] VM detection — RESOLVED in Pass 4 (commit a498ae1):
+    system-profile schema 1.1 adds `system` block (manufacturer, model, is_vm,
+    vm_hint). Detector covers VMware, VirtualBox, Hyper-V, KVM/QEMU, Xen,
+    Parallels, bhyve. Layer-0 warning + pre-install summary warnings for
+    VM + ai-ml/ml-wheels (no GPU passthrough) and VM + WSL (nested virt).
 
 --- FEATURE REQUESTS (Future Sprints) ---
 

@@ -181,6 +181,25 @@ absentmind-devkit/
 - Written incrementally (append per tool), not in one shot at the end
 - If the install crashes mid-run, the manifest reflects what actually completed
 
+### The System Profile
+- `system_scan.py` writes `system-profile.json` (schema `1.1`).
+- Top-level keys: `schema_version`, `generated_at_utc`, `host`, `system`, `os`, `cpu`,
+  `memory`, `storage`, `gpus`, `network`, `existing_installs`, `pytorch`, `warnings`.
+- `system` block (added in 1.1): `manufacturer`, `model`, `is_vm`, `vm_hint`. `is_vm` is a
+  best-effort bool from `Win32_ComputerSystem`; `vm_hint` is a short hypervisor label
+  (VMware, VirtualBox, Hyper-V, KVM, QEMU, Xen, Parallels, bhyve) or null.
+- Downstream code (pre-install summary, Layer 6) keys off `system.is_vm` for ML/WSL caveats —
+  if you bump the schema again, update both the writer and every consumer in the same change.
+
+### WSL Reboot Flow
+- `ensure_wsl_prereq` (DISM) sets `ctx.wsl_reboot_required = True` on exit `3010`, prints a
+  prominent REBOOT REQUIRED notice, and `ensure_wsl_default_distro` short-circuits to
+  `skipped` (with deferred note) instead of running `wsl --install -d` against a half-enabled
+  feature. There is **no auto-resume**: the user reboots and re-launches the installer; idempotent
+  steps skip and WSL distro install proceeds.
+- The pre-install summary warns when `--enable-wsl` is set on a host where `wsl.exe` is not
+  yet on PATH (first-time enable → reboot likely).
+
 ---
 
 ## Hard Rules — Do Not Violate
