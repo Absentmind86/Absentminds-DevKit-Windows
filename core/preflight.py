@@ -37,7 +37,7 @@ def run_preflight(ctx: InstallContext, manifest: Manifest, console: Console) -> 
         console.print("  [planned] System restore point — dry-run")
         return
 
-    ps = f"""
+    ps = rf"""
 $ErrorActionPreference = 'Stop'
 # Enable System Protection on the system drive if disabled.
 Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction SilentlyContinue

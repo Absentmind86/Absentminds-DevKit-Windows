@@ -50,7 +50,7 @@ def run_sanitize(ctx: InstallContext, manifest: Manifest, console: Console) -> N
             install_method="winutil",
             notes="Sanitation not requested (pass --run-sanitation to enable).",
         )
-        console.print(f"  [skipped] WinUtil — use --run-sanitation to apply CTT preset: {preset_name}")
+        console.print("  [skipped] WinUtil — use --run-sanitation to enable (preset: none)")
         return
 
     if ctx.dry_run:

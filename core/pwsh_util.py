@@ -16,8 +16,13 @@ def run_powershell(
     script: str,
     *,
     timeout_s: float,
+    stream: bool = False,
 ) -> tuple[int, str, str]:
-    """Run a PowerShell script string; return ``(code, stdout, stderr)``."""
+    """Run a PowerShell script string; return ``(code, stdout, stderr)``.
+
+    When *stream* is True output is printed live to the terminal and the
+    returned stdout/stderr strings will be empty.
+    """
     try:
         proc = subprocess.run(
             [
@@ -28,7 +33,7 @@ def run_powershell(
                 "-Command",
                 script,
             ],
-            capture_output=True,
+            capture_output=not stream,
             text=True,
             encoding="utf-8",
             errors="replace",
@@ -36,6 +41,8 @@ def run_powershell(
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, "", f"{type(exc).__name__}: {exc}"
+    if stream:
+        return proc.returncode, "", ""
     return proc.returncode, proc.stdout or "", proc.stderr or ""
 
 
@@ -205,16 +212,14 @@ scoop install bat ripgrep fd fzf jq lazygit delta
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 exit 0
 """
-    console.print(f"  [installing] {tool} via scoop …")
-    code, out, err = run_powershell(ps, timeout_s=1800.0)
-    tail = (out + "\n" + err).strip()[-2000:]
+    console.print(f"  [installing] {tool} via scoop (streaming output below)…")
+    code, _out, _err = run_powershell(ps, timeout_s=1800.0, stream=True)
     if code == 0:
         manifest.record_tool(
             tool=tool,
             layer="infrastructure",
             status="installed",
             install_method="scoop",
-            notes=tail or None,
         )
         console.print(f"  [done] {tool}")
         return
@@ -233,7 +238,7 @@ exit 0
         layer="infrastructure",
         status="failed",
         install_method="scoop",
-        notes=f"exit {code}: {tail}",
+        notes=f"exit {code}: see terminal output above",
     )
     console.print(f"  [failed] {tool} (exit {code})")
 

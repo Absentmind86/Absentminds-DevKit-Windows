@@ -56,6 +56,7 @@ def run_devops(ctx: InstallContext, manifest: Manifest, console: Console) -> Non
         )
         if docker_wanted:
             from core.pwsh_util import run_powershell
+            console.print("  [installing] docker-desktop permissions fix …")
             run_powershell(
                 r"""
 $dir = 'C:\ProgramData\DockerDesktop'

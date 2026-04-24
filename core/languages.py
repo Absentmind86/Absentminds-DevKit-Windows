@@ -34,9 +34,9 @@ def run_languages(ctx: InstallContext, manifest: Manifest, console: Console) -> 
             layer="languages",
             status="skipped",
             install_method="existing",
-            notes=str(py),
+            notes=f"Already present on PATH or detector. ({py})",
         )
-        console.print(f"  [skipped] Python — found at {py}")
+        console.print(f"  [skipped] python — already installed (found at {py})")
     else:
         ensure_winget_package(
             ctx,

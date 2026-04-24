@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def run_extras(ctx: InstallContext, manifest: Manifest, console: Console) -> None:
     """Install winget rows gated on profile ``extras``."""
     if not ctx.profile_selected("extras"):
-        console.print("[dim]Layer Extras — skipped (extras profile not selected)[/dim]")
+        console.print("[dim]Layer Extras — skipped (opt-in only; use 'Select all extras' in the GUI or pass --profile extras)[/dim]")
         return
 
     console.print("[bold]Layer Extras — optional personal tools[/bold]")

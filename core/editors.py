@@ -26,6 +26,14 @@ def _vscode_code_cmd() -> Path | None:
     return Path(w) if w else None
 
 
+def _cursor_cmd() -> Path | None:
+    local = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "cursor" / "resources" / "app" / "bin" / "cursor.cmd"
+    if local.is_file():
+        return local
+    w = which("cursor.cmd") or which("cursor.exe")
+    return Path(w) if w else None
+
+
 def _load_vscode_extension_ids(repo_root: Path) -> list[str]:
     path = repo_root / "config" / "vscode" / "extensions.json"
     if not path.is_file():
@@ -38,6 +46,42 @@ def _load_vscode_extension_ids(repo_root: Path) -> list[str]:
     if not isinstance(rec, list):
         return []
     return [str(x).strip() for x in rec if isinstance(x, str) and str(x).strip()]
+
+
+def _install_extensions_via_cli(
+    console: Console,
+    cli_cmd: Path,
+    extension_ids: list[str],
+    label: str,
+) -> tuple[int, list[str]]:
+    """Install *extension_ids* via a VS Code-compatible CLI (code or cursor).
+
+    Returns ``(ok_count, failed_list)``.
+    """
+    ok = 0
+    failed: list[str] = []
+    n = len(extension_ids)
+    for i, ext in enumerate(extension_ids, 1):
+        console.print(f"    [{i}/{n}] {ext} …")
+        argv = ["cmd.exe", "/c", str(cli_cmd), "--install-extension", ext, "--force"]
+        try:
+            proc = subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=600.0,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            failed.append(f"{ext}: {exc}")
+            continue
+        if proc.returncode == 0:
+            ok += 1
+        else:
+            tail = (proc.stderr or proc.stdout or "").strip()[-400:]
+            failed.append(f"{ext}: exit {proc.returncode} {tail}")
+    return ok, failed
 
 
 def _install_vscode_extensions(
@@ -69,27 +113,9 @@ def _install_vscode_extensions(
         console.print(f"  [planned] vscode-extensions — {len(extension_ids)} ids (dry-run)")
         return
 
-    ok = 0
-    failed: list[str] = []
-    for ext in extension_ids:
-        argv = ["cmd.exe", "/c", str(code_cmd), "--install-extension", ext, "--force"]
-        try:
-            proc = subprocess.run(
-                argv,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=600.0,
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            failed.append(f"{ext}: {exc}")
-            continue
-        if proc.returncode == 0:
-            ok += 1
-        else:
-            tail = (proc.stderr or proc.stdout or "").strip()[-400:]
-            failed.append(f"{ext}: exit {proc.returncode} {tail}")
+    n = len(extension_ids)
+    console.print(f"  [installing] vscode-extensions — {n} extensions via code …")
+    ok, failed = _install_extensions_via_cli(console, code_cmd, extension_ids, "vscode")
 
     notes = f"ok={ok} failed={len(failed)}"
     if failed:
@@ -108,11 +134,39 @@ def _install_vscode_extensions(
         install_method="code-cli",
         notes=notes[:4000],
     )
-    label = "done" if ok == len(extension_ids) else ("partial" if ok else "failed")
-    console.print(f"  [{label}] vscode-extensions — {ok}/{len(extension_ids)} ok")
+    label = "done" if ok == n else ("partial" if ok else "failed")
+    console.print(f"  [{label}] vscode-extensions — {ok}/{n} ok")
     if failed:
         for line in failed[:5]:
             console.print(f"    [dim]{line[:160]}[/dim]")
+
+    # Also install extensions for Cursor if available
+    cursor = _cursor_cmd()
+    if cursor is not None and "cursor" not in ctx.catalog_exclude_tools:
+        console.print(f"  [installing] cursor-extensions — {n} extensions via cursor …")
+        c_ok, c_failed = _install_extensions_via_cli(console, cursor, extension_ids, "cursor")
+        c_notes = f"ok={c_ok} failed={len(c_failed)}"
+        if c_failed:
+            c_notes += "\n" + "\n".join(c_failed[:12])
+        if c_ok == 0 and c_failed:
+            c_status = "failed"
+        elif c_failed:
+            c_status = "installed"
+            c_notes = "partial: " + c_notes
+        else:
+            c_status = "installed"
+        manifest.record_tool(
+            tool="cursor-extensions",
+            layer="editors",
+            status=c_status,
+            install_method="cursor-cli",
+            notes=c_notes[:4000],
+        )
+        c_label = "done" if c_ok == n else ("partial" if c_ok else "failed")
+        console.print(f"  [{c_label}] cursor-extensions — {c_ok}/{n} ok")
+        if c_failed:
+            for line in c_failed[:5]:
+                console.print(f"    [dim]{line[:160]}[/dim]")
 
 
 def run_editors(ctx: InstallContext, manifest: Manifest, console: Console) -> None:

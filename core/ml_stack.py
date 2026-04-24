@@ -52,11 +52,10 @@ def _pip_ml_base(ctx: InstallContext, manifest: Manifest, console: Console) -> N
     import subprocess
 
     argv = [sys.executable, "-m", "pip", "install", "--upgrade", *pkgs.split()]
-    console.print(f"  [installing] {tool} via pip …")
-    proc = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600.0)
-    tail = (proc.stdout + "\n" + proc.stderr).strip()[-2000:]
+    console.print(f"  [installing] {tool} via pip (streaming output below)…")
+    proc = subprocess.run(argv, capture_output=False, text=True, timeout=3600.0)
     if proc.returncode == 0:
-        manifest.record_tool(tool=tool, layer="ml_stack", status="installed", install_method="pip", notes=tail)
+        manifest.record_tool(tool=tool, layer="ml_stack", status="installed", install_method="pip")
         console.print(f"  [done] {tool}")
     else:
         manifest.record_tool(
@@ -64,7 +63,7 @@ def _pip_ml_base(ctx: InstallContext, manifest: Manifest, console: Console) -> N
             layer="ml_stack",
             status="failed",
             install_method="pip",
-            notes=f"exit {proc.returncode}: {tail}",
+            notes=f"exit {proc.returncode}: see terminal output above",
         )
         console.print(f"  [failed] {tool} (exit {proc.returncode})")
 
@@ -134,16 +133,14 @@ def run_ml_stack(ctx: InstallContext, manifest: Manifest, console: Console) -> N
             ]
             label = "PyTorch wheels"
 
-        console.print(f"  [installing] {label} via pip …")
-        proc = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600.0)
-        tail = (proc.stdout + "\n" + proc.stderr).strip()[-2000:]
+        console.print(f"  [installing] {label} via pip (streaming output below)…")
+        proc = subprocess.run(argv, capture_output=False, text=True, timeout=3600.0)
         if proc.returncode == 0:
             manifest.record_tool(
                 tool="pytorch-pip",
                 layer="ml_stack",
                 status="installed",
                 install_method="pip",
-                notes=tail,
             )
             console.print(f"  [done] {label}")
         else:
@@ -152,7 +149,7 @@ def run_ml_stack(ctx: InstallContext, manifest: Manifest, console: Console) -> N
                 layer="ml_stack",
                 status="failed",
                 install_method="pip",
-                notes=f"exit {proc.returncode}: {tail}",
+                notes=f"exit {proc.returncode}: see terminal output above",
             )
             console.print(f"  [failed] {label} (exit {proc.returncode})")
     elif ctx.install_ml_wheels and ctx.dry_run:
