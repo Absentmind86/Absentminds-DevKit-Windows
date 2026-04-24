@@ -191,6 +191,30 @@ absentmind-devkit/
 - Downstream code (pre-install summary, Layer 6) keys off `system.is_vm` for ML/WSL caveats —
   if you bump the schema again, update both the writer and every consumer in the same change.
 
+### Version String
+- Authoritative version lives in the repo-root `VERSION` file (plain text, e.g. `0.8.0-phase4`).
+- `core/install_context.py::_read_version()` reads it at module load; falls back to the
+  hard-coded string if the file is missing (never happens in a normal clone).
+- To cut a new version: edit `VERSION`, update `CHANGELOG.md`, tag the commit. Do not hard-code
+  the version string anywhere else in Python — import `_read_version()` or read `InstallContext.devkit_version`.
+- `am-devkit.toml` has a commented-out `version` field for documentation only; it is not read.
+
+### Catalog Architecture (Two-Tier)
+All tools fall into one of two tiers — do not blur this boundary:
+
+**Tier 1 — Bootstrap prerequisites** (direct calls in `infrastructure.py` / `languages.py`):
+- Git, Python 3 — required before the Python runtime + catalog system can run at all
+- Scoop — required before any Scoop-based tool can be installed
+- Git LFS — must follow Git; ordering matters
+These stay as direct install calls. They cannot be made excludable via `--exclude-catalog-tool`.
+
+**Tier 2 — Catalog tools** (`WINGET_CATALOG` in `install_catalog.py`, applied by `catalog_install.py`):
+- Everything else. Excludable via `--exclude-catalog-tool <id>` or the GUI Custom Mode.
+- New tools go here unless they have a genuine bootstrap ordering dependency.
+
+`scripts/smoke-test-winget-ids.py` verifies every Tier-2 ID still resolves against the winget
+source. Run it before release or when winget IDs change.
+
 ### WSL Reboot Flow
 - `ensure_wsl_prereq` (DISM) sets `ctx.wsl_reboot_required = True` on exit `3010`, prints a
   prominent REBOOT REQUIRED notice, and `ensure_wsl_default_distro` short-circuits to

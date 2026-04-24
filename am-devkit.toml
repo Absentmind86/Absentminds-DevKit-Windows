@@ -1,13 +1,16 @@
 # AM-DevKit — user-facing configuration
 #
-# This file is intended for user-overrideable settings that should survive
-# repo updates. It is NOT currently read by the installer — these are
-# documented intentions for a future configuration pass.
+# Intent: user-overrideable settings that survive repo updates.
+# Status: NOT currently read by the installer — future configuration pass.
+#         The authoritative version string lives in the repo-root VERSION file,
+#         which is read by core/install_context.py at runtime.
 #
 # Do not auto-generate values here. Edit intentionally before running install.
 
 [devkit]
-# version = "0.8.0"           # Informational only — not enforced by installer
+# The installer version is sourced from the VERSION file, not from here.
+# Uncomment to document which config snapshot corresponds to which release.
+# version = "0.8.0-phase4"
 
 # [install]
 # dry_run = false              # Default: false. Set true to preview without installing.

@@ -6,6 +6,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+_VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
+
+
+def _read_version() -> str:
+    """Read version from repo-root VERSION file; fall back to hard-coded string."""
+    try:
+        return _VERSION_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "0.8.0-phase4"
+
 
 @dataclass
 class InstallContext:
@@ -21,7 +31,7 @@ class InstallContext:
     install_ml_wheels: bool
     manifest_path: Path
     report_path: Path
-    devkit_version: str = "0.8.0-phase4"
+    devkit_version: str = field(default_factory=_read_version)
     enable_wsl: bool = False
     # If set (e.g. "Ubuntu"), run `wsl --install -d` after DISM when enable_wsl is true.
     wsl_default_distro: str | None = None

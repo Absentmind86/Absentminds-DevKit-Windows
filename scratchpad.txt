@@ -36,6 +36,14 @@ COMPLETED
         README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
         Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
         schema 1.1 and the WSL reboot flow.
+- [x] Pass 7 — VERSION file + am-devkit.toml + winget smoke-test:
+        VERSION file at repo root (plain text "0.8.0-phase4"); install_context.py
+        reads via _read_version() at module load with hard-coded fallback.
+        am-devkit.toml header updated to reference VERSION and clarify future-intent
+        status. scripts/smoke-test-winget-ids.py: validates every WINGET_CATALOG ID
+        via `winget show --id --exact`; --layer and --timeout flags; clear fail report.
+        AGENTS.md: "Version String" + "Catalog Architecture (Two-Tier)" sections added,
+        formalizing the bootstrap vs catalog boundary and referencing the smoke-test.
 - [x] Pass 6 — Transparency + framing fixes:
         pre_install_summary.py: extensions line (20 total, skip if both editors excluded).
         gui.py: FOUNDATION_ALWAYS_COUNT comment corrected (Nerd Fonts NOT automated);
@@ -56,14 +64,18 @@ Testing & Validation
 - [x] pyproject.toml: pytest config (testpaths, -v --tb=short) + ruff lint config
 
 Winget Stability
-- [ ] Winget ID smoke test (weekly: `winget show --id` for all catalog entries)
-      Note: test_install_catalog.py::TestCatalogIntegrity already catches duplicate IDs
-      and missing detect_exe fields; the remaining gap is live winget availability.
-- [ ] Document how to update catalog IDs when they change
+- [x] Winget ID smoke test — scripts/smoke-test-winget-ids.py: runs `winget show --id --exact`
+      for every WINGET_CATALOG entry; reports failures with tool name + reason; --layer filter;
+      --timeout override. Run weekly or before release.
+- [x] Document how to update catalog IDs — AGENTS.md "Catalog Architecture" section now explains
+      the two-tier split and references smoke-test-winget-ids.py explicitly.
 
 Version & Config
-- [ ] Version single-source-of-truth (VERSION file or pyproject.toml entry)
-- [ ] Clarify am-devkit.toml (delete or document intent)
+- [x] Version single-source-of-truth — VERSION file at repo root; install_context.py
+      reads via _read_version() at module load; fallback to hard-coded string.
+      am-devkit.toml header updated to reference VERSION; commented version field clarified.
+- [x] Clarify am-devkit.toml — header comment updated: "NOT currently read by installer;
+      authoritative version in VERSION file." No delete needed; it documents future intent.
 
 Code Signing
 - [ ] Decision: vendored cert, Azure Trusted Signing, or documented SmartScreen warning
