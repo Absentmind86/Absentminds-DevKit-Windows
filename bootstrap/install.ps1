@@ -172,7 +172,7 @@ function Install-PythonRequirements {
 
     $needsDowngrade = $false
     foreach ($d in $detected) {
-        if ($d.Name -ne 'flet' -or $d.Version -ne '0.25.2') {
+        if ($d.Version -ne '0.25.2') {
             $needsDowngrade = $true
             break
         }
