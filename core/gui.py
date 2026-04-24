@@ -1289,6 +1289,10 @@ def main_gui() -> None:
                 snack.open = True
                 page.update()
 
+        def _copy_results(_: ft.ControlEvent) -> None:
+            page.set_clipboard(_format_results_text())
+            show_snack("Results copied to clipboard.")
+
         results_tab_content = ft.Container(
             content=ft.Column(
                 [
@@ -1297,7 +1301,10 @@ def main_gui() -> None:
                         "Most recent dry-run or post-install results. Refresh to reload.",
                         size=12, italic=True,
                     ),
-                    ft.OutlinedButton("Refresh results", on_click=_refresh_results),
+                    ft.Row([
+                        ft.OutlinedButton("Refresh results", on_click=_refresh_results),
+                        ft.OutlinedButton("Copy results", on_click=_copy_results),
+                    ], spacing=8),
                     results_display_col,
                     ft.OutlinedButton(
                         "Open full HTML report",
