@@ -60,3 +60,49 @@ TIER 3 — DEFER / LOW PRIORITY
 - [ ] Cross-platform v2 (macOS, Linux architecture design)
 - [ ] Telemetry backend (out of scope for indie project)
 - [ ] Flet upgrade path (currently pinned 0.25.2, monitoring for API drift)
+
+
+DOCUMENTATION AUDIT (2026-04-24)
+================================
+
+README claims Core stack L127-133 "always installs" these 10 items + Scoop CLI suite:
+  Git, GitHub CLI, Windows Terminal, PowerShell 7, VS Code, Python 3, Scoop, Nerd Fonts, Oh My Posh, 7-Zip
+  + Scoop CLI: bat, eza, ripgrep, fd, fzf, zoxide, lazygit, btop, delta
+
+ACTUAL IMPLEMENTATION (verified in code):
+✓ Always attempted (Layers 2-4 unconditional execution):
+  - Git, GitHub CLI, Windows Terminal, PowerShell 7, Python 3, Scoop (infrastructure.py:40-98)
+  - VS Code, Cursor (editors.py:198+, but excludable via --exclude-catalog-tool)
+  - uv (languages.py:51-59)
+  - Oh My Posh (infrastructure.py:101-108)
+  - 7-Zip (catalog, utilities layer, profiles=None)
+
+✓ Scoop CLI bundle (infrastructure.py:99 + pwsh_util.py:212):
+  - Actually installs: bat, ripgrep, fd, fzf, jq, lazygit, delta (7 tools)
+  - Missing from actual bundle: eza, zoxide, btop
+  - Extra in bundle: jq (not listed in README)
+
+✗ NOT installed at all:
+  - Nerd Fonts — mentioned only in comments (gui.py:92, pre_install_summary.py:27)
+            No actual winget/scoop install found in layer code
+
+⚠ Profile-gated (NOT always on):
+  - Rust: systems/game-dev/hardware-robotics/ai-ml only (languages.py:19-87)
+  - Node/NVM: web-fullstack only (languages.py:63-66)
+
+⚠ Extras (Tailscale):
+  - Listed in infrastructure.py but NOT in README Core section (infrastructure.py:114-118)
+
+Summary: README "Core Stack" claim is misleading. The actual core is smaller (missing Nerd Fonts),
+         the Scoop CLI suite has wrong tool list, and Tailscale appears in Core but not in README.
+         Some tools like Rust/Node are profile-gated, not truly "always".
+
+OTHER DRIFT ITEMS VERIFIED:
+- Scoop list missing eza/zoxide/btop; "and more" false (pwsh_util.py:212)
+- Extras list wrong: includes "Everything" (actually Core utility, not Extras), missing KeePassXC/Fork/WizTree
+- GPU Magic overstates: claims CUDA Toolkit + cuDNN + Docker GPU passthrough (none implemented) + ROCm (not used, DirectML instead)
+- PyTorch not automatic: requires --install-ml-wheels flag (ml_stack.py:122)
+- Sanitation claim: says "category-level" but is "preset-level" RadioGroup (winutil_presets.py + gui.py)
+- Dotfiles: README says "VS Code settings" but config/vscode/settings.json is empty ({}) and never copied
+- Roadmap: Phase 1 marked 🔄 but should be ✅ (all exit criteria met, CHANGELOG says 0.8.0-phase4)
+- AGENTS.md tree: missing ~10 files (launchpad.py, restore_bundle.py, winutil_pin.py, winutil_presets.py, fresh.ps1, scripts/*.py, templates/obsidian-vault/, CHANGELOG.md, RELEASE_TESTING.md, THIRD_PARTY_NOTICES.md)
