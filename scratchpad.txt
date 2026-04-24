@@ -22,6 +22,16 @@ COMPLETED
         KVM/QEMU, Xen, Parallels, bhyve; Layer-0 warning on VM hit;
         pre-install summary warns on VM + ai-ml + --install-ml-wheels (no GPU
         passthrough) and VM + --enable-wsl (nested-virt caveat).
+- [x] Pass 5 — Tests + CI:
+        tests/conftest.py, test_gpu_detect.py (36), test_path_auditor.py (12),
+        test_install_catalog.py (20), test_winutil_presets.py (22) — 90 tests
+        total, 0 failures. ruff clean across core/ scripts/ tests/.
+        .github/workflows/ci.yml: windows-latest, Python 3.11/3.12/3.13,
+        py_compile (27 non-flet modules) + ruff + pytest.
+        pyproject.toml: pytest + ruff config. Fixed 50 ruff issues auto;
+        3 manual fixes (C416, B007, SIM102); suppressed SIM105/SIM112/E402
+        with rationale comments.
+
 - [x] Pass 4 — docs sync (this commit):
         README "Known caveats" section, AGENTS.md "System Profile" + "WSL Reboot
         Flow" sections, docs/PROJECT.md Layer 0 + Layer 6 updates reflecting
@@ -32,14 +42,17 @@ TIER 1 — BEFORE PUBLIC RELEASE
 ===============================
 
 Testing & Validation
-- [ ] Unit tests: gpu_detect.py (mocked nvidia-smi, WMI JSON responses)
-- [ ] Unit tests: path_auditor.py (synthetic PATH environments)
-- [ ] Unit tests: install_catalog.py (profile matching logic)
-- [ ] Unit tests: winutil_presets.py (fetch/fallback/ordering)
-- [ ] GitHub Actions CI workflow (py_compile + ruff + pytest)
+- [x] Unit tests: gpu_detect.py (vendor/PNP, cuda parse, wheel tag selection, directml path) — 36 tests
+- [x] Unit tests: path_auditor.py (synthetic PATH, conflicts, false-positive suppression, fingerprint) — 12 tests
+- [x] Unit tests: install_catalog.py (applies_to, layer queries, count/disk estimates, integrity) — 20 tests
+- [x] Unit tests: winutil_presets.py (parse, ordering, fallback, mocked fetch/network) — 22 tests
+- [x] GitHub Actions CI workflow (.github/workflows/ci.yml): py_compile (27 modules) + ruff + pytest
+- [x] pyproject.toml: pytest config (testpaths, -v --tb=short) + ruff lint config
 
 Winget Stability
 - [ ] Winget ID smoke test (weekly: `winget show --id` for all catalog entries)
+      Note: test_install_catalog.py::TestCatalogIntegrity already catches duplicate IDs
+      and missing detect_exe fields; the remaining gap is live winget availability.
 - [ ] Document how to update catalog IDs when they change
 
 Version & Config

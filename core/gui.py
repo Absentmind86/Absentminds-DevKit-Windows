@@ -69,7 +69,7 @@ PROFILE_HINTS: dict[str, str] = {
     "custom":            "View-mode toggle — exposes every stack's tools so you can cherry-pick anything.",
 }
 
-PROFILE_DISPLAY: dict[str, str] = {pid: label for pid, label in PROFILE_DEFS}
+PROFILE_DISPLAY: dict[str, str] = dict(PROFILE_DEFS)
 
 # Non-catalog, non-winget features that map to installer flags.
 # Rendered as real checkboxes under their profile section.
@@ -755,11 +755,7 @@ def main_gui() -> None:
 
             custom_mode = bool(profile_checks.get("custom", ft.Checkbox()).value)
             active_pids = {pid for pid in STANDARD_PROFILE_IDS if profile_checks.get(pid, ft.Checkbox()).value}
-            visible_pids = STANDARD_PROFILE_IDS if custom_mode else tuple(
-                p for p in STANDARD_PROFILE_IDS if p in active_pids
-            )
-
-            for pid, label in PROFILE_DEFS:
+            for pid, _label in PROFILE_DEFS:
                 cb = profile_checks[pid]
                 # Header row: checkbox (acts as select-all) + info button
                 header = ft.Row(

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint + Test (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest ruff rich
+          # flet (GUI) is excluded from CI — gui.py is the only module that imports it.
+          # All unit tests and non-GUI modules run without it.
+
+      - name: Syntax check — non-GUI modules (py_compile)
+        run: |
+          python -m py_compile `
+            core/catalog_install.py `
+            core/devops.py `
+            core/editors.py `
+            core/extras.py `
+            core/finalize.py `
+            core/infrastructure.py `
+            core/install_catalog.py `
+            core/install_context.py `
+            core/installer.py `
+            core/languages.py `
+            core/launchpad.py `
+            core/manifest.py `
+            core/ml_stack.py `
+            core/pre_install_summary.py `
+            core/preflight.py `
+            core/pwsh_util.py `
+            core/pyenv_scoop.py `
+            core/restore_bundle.py `
+            core/sandbox.py `
+            core/sanitize.py `
+            core/system_scan.py `
+            core/utilities.py `
+            core/winget_util.py `
+            core/winutil_pin.py `
+            core/winutil_presets.py `
+            scripts/gpu_detect.py `
+            scripts/path_auditor.py
+
+      - name: Ruff lint
+        run: ruff check core/ scripts/ tests/
+
+      - name: Run tests
+        run: pytest

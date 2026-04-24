@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from core.catalog_install import install_catalog_layer
-from core.pyenv_scoop import ensure_pyenv_scoop
 from core.pwsh_util import ensure_rustup_default
+from core.pyenv_scoop import ensure_pyenv_scoop
 from core.winget_util import ensure_winget_package, which
 
 if TYPE_CHECKING:

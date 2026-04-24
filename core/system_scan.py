@@ -21,9 +21,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 _SCHEMA_VERSION: Final[str] = "1.1"
 
@@ -343,7 +344,7 @@ def _parse_wmi_driver_date(raw: str | None) -> datetime | None:
                 int(iso_try.group(1)),
                 int(iso_try.group(2)),
                 int(iso_try.group(3)),
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             )
         except ValueError:
             return None
@@ -351,12 +352,12 @@ def _parse_wmi_driver_date(raw: str | None) -> datetime | None:
     if m:
         try:
             ms = int(m.group(1))
-            return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+            return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
         except (OSError, ValueError, OverflowError):
             return None
     if len(raw) >= 8 and raw[:8].isdigit():
         try:
-            return datetime(int(raw[0:4]), int(raw[4:6]), int(raw[6:8]), tzinfo=timezone.utc)
+            return datetime(int(raw[0:4]), int(raw[4:6]), int(raw[6:8]), tzinfo=UTC)
         except ValueError:
             return None
     return None
@@ -465,7 +466,7 @@ def collect_warnings(
                 f"recommend at least {_LOW_DISK_BYTES // (1024 * 1024 * 1024)} GiB for full installs)."
             )
             break
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     gpus = system_profile.get("gpus") if isinstance(system_profile.get("gpus"), list) else []
     driver_warned = False
     for g in gpus:
@@ -493,9 +494,8 @@ def collect_warnings(
         else {}
     )
     nvcc = existing.get("nvcc") if isinstance(existing.get("nvcc"), dict) else {}
-    if gpus and any(isinstance(g, dict) and g.get("vendor") == "nvidia" for g in gpus):
-        if not nvcc.get("present") and pytorch.get("torch_path_kind") == "nvidia_cuda":
-            extra.append(
+    if gpus and any(isinstance(g, dict) and g.get("vendor") == "nvidia" for g in gpus) and not nvcc.get("present") and pytorch.get("torch_path_kind") == "nvidia_cuda":
+        extra.append(
                 "NVIDIA GPU with CUDA-capable driver detected, but nvcc was not found on PATH — "
                 "PyTorch wheels bundle their own CUDA runtime; toolkit optional unless you compile extensions."
             )
@@ -565,7 +565,7 @@ def build_system_profile(
 
     profile: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
-        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "host": {
             "platform": platform.system(),
             "platform_release": platform.release(),

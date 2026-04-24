@@ -211,6 +211,10 @@ absentmind-devkit/
 5. **Do not skip the manifest write.** Even for tools that were already installed (mark them `skipped`, not absent).
 6. **`gpu_detect.py` must be runnable standalone** — it will be validated on real hardware before the rest of the stack is built. Keep it importable and independently testable.
 7. **GUI is Flet (`core/gui.py`).** Profile selection remains available via CLI flags (`--profile`, `--absentmind`).
+8. **Tests live in `tests/`.** Run with `pytest`. CI runs on every push/PR via `.github/workflows/ci.yml`
+   (windows-latest, Python 3.11/3.12/3.13). `core/gui.py` is excluded from py_compile in CI
+   because it imports `flet` (not installed in CI); all other modules are covered.
+   Lint: `ruff check core/ scripts/ tests/`. Config in `pyproject.toml`.
 
 ---
 

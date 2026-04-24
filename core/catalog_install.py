@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from core.install_catalog import WingetCatalogEntry, catalog_entries_for_layer, get_detector
+from core.install_catalog import catalog_entries_for_layer, get_detector
 from core.winget_util import ensure_winget_package
 
 if TYPE_CHECKING:

@@ -372,7 +372,7 @@ def format_human_report(report: GpuDetectionReport) -> str:
         "",
         f"Discrete vendor (WMI / PnP): {report.discrete_vendor}",
         f"PyTorch index URL: {report.pytorch_index_url}",
-        f"Suggested pip command:",
+        "Suggested pip command:",
         "  " + " ".join(report.pip_command_example),
         "",
     ]

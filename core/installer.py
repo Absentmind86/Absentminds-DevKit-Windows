@@ -13,8 +13,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from rich.console import Console
 from rich.theme import Theme
@@ -23,7 +24,19 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from core import devops, editors, extras, finalize, infrastructure, languages, ml_stack, preflight, sanitize, sandbox, utilities  # noqa: E402
+from core import (  # noqa: E402
+    devops,
+    editors,
+    extras,
+    finalize,
+    infrastructure,
+    languages,
+    ml_stack,
+    preflight,
+    sandbox,
+    sanitize,
+    utilities,
+)
 from core.install_context import InstallContext, merge_profile_args  # noqa: E402
 from core.manifest import Manifest  # noqa: E402
 from core.system_scan import build_system_profile, write_system_profile  # noqa: E402

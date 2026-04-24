@@ -74,6 +74,7 @@ def fetch_presets(*, latest: bool = False, timeout: float = 30.0) -> list[Preset
 
     if latest:
         import urllib.request
+
         from core.winutil_pin import WINUTIL_PRESET_LIVE_URL
         with urllib.request.urlopen(WINUTIL_PRESET_LIVE_URL, timeout=timeout) as resp:
             data: dict[str, Any] = json.loads(resp.read().decode())

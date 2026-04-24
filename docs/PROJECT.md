@@ -950,6 +950,12 @@ absentmind-devkit/
 - [x] Layer 8.5 Disposable Workspace config generation (`core/sandbox.py`)
 
 ### Phase 4 — Release (current)
+- [x] Unit test suite (90 tests, 0 failures):
+      `tests/test_gpu_detect.py` (36), `test_path_auditor.py` (12),
+      `test_install_catalog.py` (20), `test_winutil_presets.py` (22)
+- [x] GitHub Actions CI (`.github/workflows/ci.yml`):
+      windows-latest, Python 3.11 / 3.12 / 3.13 — py_compile + ruff + pytest
+- [x] `pyproject.toml` — pytest + ruff lint config
 - [ ] Testing on clean Windows installs — see `docs/RELEASE_TESTING.md`
 - [x] README install / clone URLs — [Absentmind86/Absentminds-DevKit-Windows](https://github.com/Absentmind86/Absentminds-DevKit-Windows)
 - [ ] Documentation polish (ongoing)

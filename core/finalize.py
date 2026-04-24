@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import shutil
 import sys
-import html
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -407,7 +407,7 @@ def build_post_install_html(
   {launchpad_html}
 
   <footer>
-    Generated {_html_escape(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))}
+    Generated {_html_escape(datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"))}
     · Manifest: <code>{_html_escape(str(ctx.manifest_path))}</code>
     <p class="hint">AM-DevKit is MIT-licensed; WinUtil, Winget packages, pip libraries, and ML runtimes have separate terms.
     See <code>{_html_escape(str(third_party_doc))}</code></p>
@@ -435,7 +435,7 @@ def run_finalize(ctx: InstallContext, manifest: Manifest, console: Console) -> d
     fp_payload = {
         "path_fingerprint_sha256": audit.get("path_fingerprint_sha256"),
         "conflict_count": audit.get("conflict_count"),
-        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     fp_path = ctx.repo_root / "path-fingerprint.json"
     fp_path.write_text(json.dumps(fp_payload, indent=2), encoding="utf-8")

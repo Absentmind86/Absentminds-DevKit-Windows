@@ -3,7 +3,6 @@
 
 import json
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -11,8 +10,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Import catalog
 import sys
+
 sys.path.insert(0, str(_REPO_ROOT))
-from core.install_catalog import WINGET_CATALOG, get_detector, TOOL_DISK_MB
+from core.install_catalog import TOOL_DISK_MB, WINGET_CATALOG, get_detector
 
 
 def _check_tool_via_detector(entry: Any) -> bool:

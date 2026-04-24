@@ -9,7 +9,6 @@ Checks:
 """
 
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,7 +18,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Import catalog
 sys.path.insert(0, str(_REPO_ROOT))
-from core.install_catalog import WINGET_CATALOG, get_detector, TOOL_DISK_MB
+from core.install_catalog import TOOL_DISK_MB, WINGET_CATALOG, get_detector
 
 
 def _check_tool_via_detector(entry: Any) -> bool:
@@ -179,7 +178,7 @@ def verify_install() -> None:
 
     pytorch_info = _check_pytorch_cuda()
     if pytorch_info["installed"]:
-        print(f"PyTorch installed: YES")
+        print("PyTorch installed: YES")
         print(f"  Version: {pytorch_info.get('version', 'unknown')}")
         if "error" in pytorch_info:
             print(f"  Error: {pytorch_info['error']}")
@@ -190,9 +189,9 @@ def verify_install() -> None:
                 print(f"  GPU count: {pytorch_info.get('device_count', 0)}")
                 print(f"  GPU name: {pytorch_info.get('device_name', 'unknown')}")
             else:
-                print(f"  (Running CPU-only mode)")
+                print("  (Running CPU-only mode)")
     else:
-        print(f"PyTorch installed: NO")
+        print("PyTorch installed: NO")
 
     print()
 
@@ -255,7 +254,7 @@ def verify_install() -> None:
             print(f"  * {len(missing)} tools are missing. Check installation logs.")
         else:
             print(f"  * {len(missing)} tools are missing. Run full install again or")
-            print(f"    manually install with: winget install <tool-id>")
+            print("    manually install with: winget install <tool-id>")
     print()
 
 
