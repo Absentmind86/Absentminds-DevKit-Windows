@@ -89,9 +89,9 @@ CORE_ITEMS: tuple[tuple[str, str, str], ...] = (
 
 # Approximate count of non-catalog foundation tools that always install
 # (Git, Git LFS, GitHub CLI, Windows Terminal, PowerShell 7, OpenSSH, uv,
-# pyenv-win, Scoop, Scoop CLI suite, Oh My Posh, Tailscale, Nerd Fonts,
+# pyenv-win, Scoop, Scoop CLI suite, Oh My Posh, Tailscale,
 # restore-point, dotfiles).
-FOUNDATION_ALWAYS_COUNT: int = 15
+FOUNDATION_ALWAYS_COUNT: int = 14
 
 # Hover tooltips shown on every catalog tool checkbox and feature toggle.
 TOOL_TOOLTIPS: dict[str, str] = {
@@ -151,7 +151,7 @@ TOOL_TOOLTIPS: dict[str, str] = {
     "discord":           "Discord — voice, video, and text chat platform. Popular in dev communities, gaming, and open-source projects.",
     "ffmpeg":            "FFmpeg — command-line multimedia framework for converting, encoding, streaming, and processing audio/video files.",
     # Feature toggles (map to ui_key, not tool id) -----------------------
-    "install_ml_wheels": "Installs GPU-matched PyTorch via pip. Auto-detects NVIDIA CUDA or AMD ROCm and selects the right wheel index; falls back to CPU-only wheels.",
+    "install_ml_wheels": "Installs GPU-matched PyTorch via pip. Auto-detects NVIDIA CUDA and selects the right wheel index; uses DirectML (torch-directml) for AMD GPUs; falls back to CPU-only wheels.",
     "install_ml_base":   "Installs the core scientific Python stack via pip: numpy, pandas, matplotlib, scikit-learn, jupyter, ipython.",
 }
 

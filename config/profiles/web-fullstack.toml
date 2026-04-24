@@ -1,1 +1,11 @@
-# Profile: Web / Full-Stack — component list to be filled from PROJECT.md
+# Profile: Web / Full-Stack
+#
+# Profile gating is handled exclusively via the `profiles` field on
+# WingetCatalogEntry objects in core/install_catalog.py (P_WEB frozenset).
+# This file is a placeholder for future user-overrideable profile metadata.
+# Do not add tool lists here unless you also wire up a TOML reader.
+#
+# Tools gated to this profile (see install_catalog.py):
+#   nvm-windows, docker-desktop, kubectl, helm, postgresql-17, redis, mkcert,
+#   ngrok, aws-cli, google-cloud-sdk, azure-cli, podman-desktop, golang,
+#   temurin-jdk21, dotnet-sdk-8, dbeaver, bruno, jetbrains-toolbox

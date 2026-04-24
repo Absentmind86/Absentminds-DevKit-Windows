@@ -1,1 +1,9 @@
-# Profile: Absentmind Mode (all stacks) — component list to be filled from PROJECT.md
+# Profile: Absentmind Mode
+#
+# Activates all core profiles: ai-ml, web-fullstack, systems, game-dev,
+# hardware-robotics. No prompts. Extras remain opt-in.
+#
+# Profile gating is handled exclusively in core/install_catalog.py.
+# In installer.py/gui.py, --absentmind expands to all five core profiles.
+# This file is a placeholder for future user-overrideable profile metadata.
+# Do not add tool lists here unless you also wire up a TOML reader.

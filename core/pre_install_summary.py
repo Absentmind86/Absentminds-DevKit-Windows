@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 _OFF_CATALOG_STEP_BUDGET: int = 34
 
 # Approximate fixed disk budgets (MB) for non-catalog portions of an install.
-# Core stack: Git, GitHub CLI, Windows Terminal, PowerShell 7, VS Code,
-# Python 3, Scoop + modern CLI suite, Nerd Fonts, Oh My Posh, 7-Zip.
+# Core stack: Git, Git LFS, GitHub CLI, Windows Terminal, PowerShell 7,
+# VS Code, Python 3, Scoop + CLI suite, Oh My Posh, Tailscale, uv, 7-Zip.
 _CORE_STACK_MB: int = 2200
 _SCOOP_CLI_SUITE_MB: int = 150
 # Optional ML bundles.

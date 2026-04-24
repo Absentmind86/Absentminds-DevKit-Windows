@@ -1,1 +1,38 @@
-{}
+{
+  "_comment": "AM-DevKit VS Code defaults — not currently seeded by installer (finalize.py). Populate core/finalize.py to copy this to %APPDATA%/Code/User/settings.json.",
+
+  "editor.formatOnSave": true,
+  "editor.autoSave": "onFocusChange",
+  "editor.tabSize": 4,
+  "editor.detectIndentation": true,
+  "editor.rulers": [100],
+  "editor.minimap.enabled": false,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.eol": "\n",
+
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.fontFamily": "monospace",
+
+  "workbench.colorTheme": "One Dark Pro",
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.startupEditor": "none",
+
+  "git.autofetch": true,
+  "git.confirmSync": false,
+
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "editor.wordWrap": "on"
+  }
+}

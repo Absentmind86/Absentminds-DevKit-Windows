@@ -1,5 +1,27 @@
 # AM-DevKit — user-facing configuration
-# Values here are not auto-generated; edit intentionally.
+#
+# This file is intended for user-overrideable settings that should survive
+# repo updates. It is NOT currently read by the installer — these are
+# documented intentions for a future configuration pass.
+#
+# Do not auto-generate values here. Edit intentionally before running install.
 
 [devkit]
-# version = "0.0.0"
+# version = "0.8.0"           # Informational only — not enforced by installer
+
+# [install]
+# dry_run = false              # Default: false. Set true to preview without installing.
+# skip_restore_point = false   # Default: false. Strongly recommended to keep true.
+# skip_dotfiles = false        # Default: false. Set true to skip dotfile seeding.
+# yes = false                  # Default: false. Set true to suppress all confirmation prompts.
+
+# [profiles]
+# selected = ["ai-ml", "web-fullstack"]   # Pre-select profiles (avoids GUI prompt)
+# absentmind = false                      # Set true to activate all core profiles silently
+
+# [sanitation]
+# enabled = false              # Default: false. Opt-in only.
+# preset = "minimal"           # "minimal" or "standard"
+
+# [catalog]
+# exclude = []                 # List of tool IDs to skip, e.g. ["cursor", "tailscale"]

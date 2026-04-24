@@ -1,1 +1,12 @@
-# Profile: AI / ML — component list to be filled from PROJECT.md
+# Profile: AI / ML
+#
+# Profile gating is handled exclusively via the `profiles` field on
+# WingetCatalogEntry objects in core/install_catalog.py (P_AI frozenset).
+# This file is a placeholder for future user-overrideable profile metadata
+# (e.g. custom tool additions, per-profile settings). Do not add tool lists
+# here unless you also wire up a TOML reader in the installer.
+#
+# Tools gated to this profile (see install_catalog.py):
+#   ollama, docker-desktop, kubectl, helm, postgresql-17, redis, mkcert,
+#   ngrok, aws-cli, google-cloud-sdk, azure-cli, podman-desktop, golang,
+#   dbeaver, bruno, jetbrains-toolbox

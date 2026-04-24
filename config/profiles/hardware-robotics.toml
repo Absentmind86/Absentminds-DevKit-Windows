@@ -1,1 +1,10 @@
-# Profile: Hardware / Robotics — component list to be filled from PROJECT.md
+# Profile: Hardware / Robotics
+#
+# Profile gating is handled exclusively via the `profiles` field on
+# WingetCatalogEntry objects in core/install_catalog.py (P_HW frozenset).
+# This file is a placeholder for future user-overrideable profile metadata.
+# Do not add tool lists here unless you also wire up a TOML reader.
+#
+# Tools gated to this profile (see install_catalog.py):
+#   arduino-ide, putty, sysinternals, wireshark, cmake, ninja
+# Rust (rustup) is also installed for this profile via core/languages.py.

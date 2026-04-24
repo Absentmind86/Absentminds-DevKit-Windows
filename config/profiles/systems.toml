@@ -1,1 +1,12 @@
-# Profile: Systems / Low-Level — component list to be filled from PROJECT.md
+# Profile: Systems / Low-Level
+#
+# Profile gating is handled exclusively via the `profiles` field on
+# WingetCatalogEntry objects in core/install_catalog.py (P_SYS frozenset).
+# This file is a placeholder for future user-overrideable profile metadata.
+# Do not add tool lists here unless you also wire up a TOML reader.
+#
+# Tools gated to this profile (see install_catalog.py):
+#   sysinternals, wireshark, nmap, docker-desktop, kubectl, helm,
+#   aws-cli, google-cloud-sdk, azure-cli, podman-desktop, golang,
+#   temurin-jdk21, dotnet-sdk-8, cmake, ninja, jetbrains-toolbox
+# Rust (rustup) is also installed for this profile via core/languages.py.
