@@ -249,6 +249,49 @@ Post-Install Validator + GUI Report:
 Group all three under "Maintenance & Validation" section in GUI (not clutter if implemented
 as collapsible or tabbed)
 
+--- GROK AUDIT 1.1 — Transparency on Every Installed Item (2026-04-24) ---
+
+VS Code / Cursor Extensions:
+- 20 extensions in config/vscode/extensions.json are auto-installed once editor is chosen
+  (eamodio.gitlens, esbenp.prettier-vscode, dbaeumer.vscode-eslint, usernamehw.errorlens,
+   christian-kohler.path-intellisense, ms-python.python, ms-python.vscode-pylance,
+   charliermarsh.ruff, ms-toolsai.jupyter, formulahendry.auto-rename-tag,
+   pranaygp.vscode-css-peek, humao.rest-client, ms-azuretools.vscode-docker,
+   ms-vscode-remote.remote-ssh, ms-vscode-remote.remote-wsl, PKief.material-icon-theme,
+   zhuangtongfa.material-theme, adpyke.codesnap, wayou.vscode-todo-highlight, continue.continue)
+- Extensions are NOT forced if editor is excluded via GUI / --exclude-catalog-tool
+- CLI mode: pre-install summary does NOT list individual extensions — user only sees "VS Code"
+- GUI mode: checkboxes exist per editor but not per extension
+- RECOMMENDATION (High): Add explicit line to pre-install summary:
+    "VS Code + Cursor extensions (20 total): GitLens, Prettier, Ruff, Jupyter, Continue, …
+     (skipped if editor is excluded)"
+- RECOMMENDATION (Nice-to-have): Collapsible "Full extension list" in GUI under Editors
+
+Semi-automatic installs transparency table:
+  Scoop CLI bundle   — always on, no per-tool choice, listed in summary       — GOOD
+  Oh My Posh         — always on (catalog, profiles=None), listed             — GOOD
+  Nerd Fonts         — NOT installed (stale comment in gui.py + summary)      — NEEDS FIX
+  WinUtil tweaks     — opt-in, shows preset name only (not actual tweak list) — MEDIUM
+  PowerToys backup   — Extras profile only, clearly scoped                    — GOOD
+  Obsidian template  — Extras + Obsidian only, clearly scoped                 — GOOD
+
+Actions needed:
+- [ ] Pre-install summary: add explicit extensions line (20 total, skip if editor excluded)
+- [ ] Pre-install summary + GUI: show actual WinUtil tweak list when sanitation enabled
+      (tweak IDs already available via winutil_presets.get_tweaks_for_preset)
+- [ ] Remove stale Nerd Fonts references (gui.py FOUNDATION_ALWAYS_COUNT comment,
+      pre_install_summary.py comment) — already partially done in Pass 2; verify clean
+
+Framing Issue — "Opinionated" vs "Personalized + Reproducible":
+- README calls AM-DevKit an "opinionated orchestration layer" — LLMs echo this back and it
+  may repel users who expect forced choices
+- Reality: users can exclude any tool, mix profiles, dry-run, skip flags; Absentmind Mode is
+  one preset, not the only way
+- Better frame: "Norton Ghost for your dev stack — build your perfect environment once,
+  document it, reproduce it anywhere, share it with your team or future self"
+- RECOMMENDATION: Rewrite README intro + any other "opinionated" instances to lead with the
+  reproducibility/portability pitch
+
 --- TRANSPARENCY AUDIT SUMMARY ---
 
 Overall verdict: Very Good (8.5/10). Strengths:
