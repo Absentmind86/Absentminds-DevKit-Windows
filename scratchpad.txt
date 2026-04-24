@@ -1,0 +1,62 @@
+AM-DevKit Release Readiness Game Plan
+=====================================
+
+Based on executive code review assessment (2026-04-24) and ongoing development.
+Items removed from this list as completed.
+
+COMPLETED
+=========
+- [x] Dynamic CTT WinUtil preset selection (fetch live with fallback)
+- [x] Pinned WinUtil release with SHA256 verification (26.04.14)
+- [x] Opt-in unpinned mode (--winutil-latest) with caution
+- [x] GUI RadioGroup + preset loader thread
+- [x] Sanitizer documentation (trust model, fallback paths)
+
+
+TIER 1 — BEFORE PUBLIC RELEASE
+===============================
+
+Testing & Validation
+- [ ] Unit tests: gpu_detect.py (mocked nvidia-smi, WMI JSON responses)
+- [ ] Unit tests: path_auditor.py (synthetic PATH environments)
+- [ ] Unit tests: install_catalog.py (profile matching logic)
+- [ ] Unit tests: winutil_presets.py (fetch/fallback/ordering)
+- [ ] GitHub Actions CI workflow (py_compile + ruff + pytest)
+
+Winget Stability
+- [ ] Winget ID smoke test (weekly: `winget show --id` for all catalog entries)
+- [ ] Document how to update catalog IDs when they change
+
+Version & Config
+- [ ] Version single-source-of-truth (VERSION file or pyproject.toml entry)
+- [ ] Clarify am-devkit.toml (delete or document intent)
+
+Code Signing
+- [ ] Decision: vendored cert, Azure Trusted Signing, or documented SmartScreen warning
+- [ ] Implement chosen path
+
+
+TIER 2 — POST-RELEASE POLISH
+==============================
+
+Code Quality
+- [ ] DRY helper for _ensure_repo_on_sys_path() (appears in 6+ files)
+- [ ] Review __future__ annotations ceremony (optional cleanup)
+
+Observability
+- [ ] Opt-in failure reporter (GitHub issue template link in GUI on error)
+- [ ] Consider lightweight telemetry (issue template with manifest + profile)
+
+Documentation
+- [ ] Bump playbook for WinUtil pin (docstring exists, but link from README?)
+- [ ] Troubleshooting guide (common Winget failures, offline fallbacks)
+
+
+TIER 3 — DEFER / LOW PRIORITY
+==============================
+
+- [ ] Update mode (sync manifest against current catalog for new tools)
+- [ ] "Lite" mode (Core + one profile, ~5 minutes)
+- [ ] Cross-platform v2 (macOS, Linux architecture design)
+- [ ] Telemetry backend (out of scope for indie project)
+- [ ] Flet upgrade path (currently pinned 0.25.2, monitoring for API drift)
