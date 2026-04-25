@@ -20,9 +20,9 @@ AM-DevKit is a **Windows developer toolkit installer**. It is not a package mana
 
 Think of it as **Norton Ghost for your dev stack** — one run produces a documented, reproducible environment and a restore script you can replay on any future machine. It detects your hardware, makes smart decisions, and leaves a manifest of everything it did.
 
-Optional Windows sanitation (native PowerShell — privacy and performance tweaks) is available but off by default — the installer works perfectly without it.
+Optional Windows sanitation (native PowerShell — curated registry and service tweaks for privacy and performance) is available but off by default — the installer works perfectly without it.
 
-No other installer does all of this. Most handle apps *or* the OS — never both. None detect your GPU and install the correct ML stack automatically. Nobody ships a recoverable manifest.
+No other installer combines all of this in one run. Tools like WinUtil handle OS tweaks well but aren't focused on developer stacks. Winget and Scoop handle apps but not GPU intelligence or reproducibility. Few ship a clean, replayable restore script + manifest out of the box.
 
 ---
 
@@ -87,7 +87,7 @@ Select one or more. They stack. Each has an info button that shows exactly what 
 | PATH conflict auditor | ❌ | ❌ | ❌ | ✅ |
 | Dotfile seeding (.gitconfig, .bashrc, PS profile) | ❌ | ❌ | ⚠️ DIY | ✅ |
 | System Restore Point (automatic, before anything runs) | ❌ | ❌ | ❌ | ✅ |
-| Optional Windows sanitation | ❌ | ❌ | ❌ | ✅ opt-in |
+| Windows sanitation (bundled, auditable, no downloads) | ❌ | ❌ | ⚠️ DIY | ✅ opt-in |
 
 > **On Windows sanitization:** The optional sanitation step runs a bundled PowerShell script (`scripts/sanitize.ps1`) that applies a curated set of privacy and performance registry/service tweaks — no external downloads, no GUI, fully auditable in the repo.
 
@@ -95,7 +95,7 @@ Select one or more. They stack. Each has an info button that shows exactly what 
 
 ## The GPU Magic
 
-This is AM-DevKit's most significant differentiator. No other Windows installer does this.
+This is AM-DevKit's most significant differentiator. Very few Windows installers attempt this level of GPU intelligence.
 
 ```
 NVIDIA detected?
@@ -165,7 +165,7 @@ Not dev stack. Presented separately after profile selection.
 - Windows 10 (build 1903+) or Windows 11
 - PowerShell 5.1+ (built-in — no pre-install required)
 - Internet connection
-- ~20GB free disk space for a full Absentmind Mode install
+- ~30–40GB free disk space for a full Absentmind Mode install (CUDA wheels, multiple IDEs, Docker, cloud CLIs — plan for more, not less)
 
 Administrator privileges required for sanitation and system-level installs.
 
