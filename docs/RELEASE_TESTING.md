@@ -1,16 +1,16 @@
 # Release testing (Phase 4)
 
-Use this checklist on **throwaway Windows VMs** before tagging a release.
-AM-DevKit changes system configuration, Winget state, and optionally CTT WinUtil tweaks —
-never use a production daily driver as the first validation target.
-
-Take a VM snapshot before every destructive section so you can reset cleanly between runs.
+Use this checklist before tagging a release. Sections 2–7 and 9 are non-destructive
+and safe to run on any Windows machine. Section 8 (destructive smoke) installs real
+software and section 8d applies system-level sanitization tweaks — a VM or spare machine
+is convenient for those so you can reset quickly, but the tool has been validated on a
+live daily-driver install and is designed to be safe and reversible.
 
 ---
 
 ## 1. Environment
 
-- [ ] Fresh Windows 11 (or Windows 10 build 1903+) VM, current patches, local admin
+- [ ] Windows 11 (or Windows 10 build 1903+), current patches, local admin
 - [ ] Repo cloned to a short path — e.g. `C:\src\am-devkit`
       from [github.com/Absentmind86/am-devkit](https://github.com/Absentmind86/am-devkit)
 - [ ] Python 3.11+ available, or run `bootstrap/install.ps1` to bootstrap it
@@ -109,9 +109,9 @@ Run interactively (without `--skip-summary`) and verify:
 
 ---
 
-## 8. Destructive smoke (VM only — snapshot before each)
+## 8. Destructive smoke (installs real software — snapshot or spare machine recommended)
 
-> Reset to clean snapshot between each sub-section.
+> A VM or snapshot makes it easy to reset between sub-sections, but this is not required.
 
 ### 8a. Single profile — systems
 - [ ] `python -m core.installer --profile systems --yes --skip-summary`
@@ -135,7 +135,7 @@ Run interactively (without `--skip-summary`) and verify:
       `torch` with CPU index on CPU-only VM)
 - [ ] `python -c "import torch; print(torch.__version__)"` runs without error
 
-### 8d. Sanitation (most destructive — separate disposable VM)
+### 8d. Sanitation (modifies registry and services — reversible via sanitize-restore.ps1)
 - [ ] `python -m core.installer --run-sanitation --sanitation-preset minimal --yes --skip-summary`
 - [ ] Native `scripts/sanitize.ps1` runs (no external download); tweak steps stream to console; no uncaught exception
 - [ ] Final line reads `Sanitization complete. (Minimal preset - no errors)` with exit 0
