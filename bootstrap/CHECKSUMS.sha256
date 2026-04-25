@@ -1,7 +1,7 @@
 # AM-DevKit bootstrap script checksums (SHA256)
-# Updated on every push that modifies bootstrap/fresh.ps1
+# Updated automatically by CI on every push that modifies bootstrap/fresh.ps1
 # Verify with: Get-FileHash fresh.ps1 -Algorithm SHA256
 #
 # Format: HASH  filename  (compatible with sha256sum -c)
 
-585D5DFF40BE2977EA3F0520526D7FC336DFFC133619321EF1BCEDAC787A4288  fresh.ps1
+205C9ED13C2D9EB47FD36923B9E3F80485624DA8E32444BA0CCA7F487DEFEC1C  fresh.ps1
