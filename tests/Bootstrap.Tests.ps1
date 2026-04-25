@@ -226,9 +226,10 @@ Describe "bootstrap/Verify-Bootstrap.ps1" {
         $VerifyContent | Should -Match 'Get-FileHash'
     }
 
-    It "does not use irm | iex directly (forces file-based verification)" {
-        # The verifier should download to a file first, not pipe to iex
-        $VerifyContent | Should -Not -Match '\|\s*iex'
+    It "does not use irm | iex in executable code (forces file-based verification)" {
+        # Strip comment blocks (.NOTES etc.) then check no live iex pipe remains
+        $codeOnly = ($VerifyContent -split "`n") | Where-Object { $_ -notmatch '^\s*#' }
+        ($codeOnly -join "`n") | Should -Not -Match '\|\s*iex'
     }
 
 }

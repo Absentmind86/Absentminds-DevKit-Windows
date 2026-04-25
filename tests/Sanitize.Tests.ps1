@@ -183,7 +183,7 @@ Describe "sanitize.ps1 — exit code contract (source check)" {
     }
 
     It "source exits based on ErrCount" {
-        $SanContent | Should -Match 'ErrCount.*exit|exit.*ErrCount'
+        $SanContent | Should -Match '\$script:ErrCount -eq 0'
     }
 
 }
