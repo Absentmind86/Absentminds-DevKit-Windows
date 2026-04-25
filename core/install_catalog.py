@@ -328,9 +328,40 @@ def get_detector(entry: WingetCatalogEntry) -> Callable[[], bool]:
         return _extras_detect
 
     if entry.tool == "cursor":
-        # Cursor does not register on PATH; winget installs to LOCALAPPDATA\Programs\cursor
         _cursor_path = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "cursor" / "Cursor.exe"
         return lambda: _exe_found("cursor.exe") or _path_if_file(_cursor_path)
+
+    # GUI apps that do not reliably register on PATH after winget install
+    _loc = Path(os.environ.get("LOCALAPPDATA", ""))
+    _pf  = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+    _pfx = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+
+    if entry.tool == "jetbrains-toolbox":
+        _jb = _loc / "JetBrains" / "Toolbox" / "bin" / "jetbrains-toolbox.exe"
+        return lambda: _exe_found("jetbrains-toolbox.exe") or _path_if_file(_jb)
+
+    if entry.tool == "arduino-ide":
+        _ard = _loc / "Arduino IDE" / "Arduino IDE.exe"
+        return lambda: _exe_found("arduino.exe") or _path_if_file(_ard)
+
+    if entry.tool == "bruno":
+        _bruno = _loc / "Programs" / "Bruno" / "Bruno.exe"
+        return lambda: _exe_found("Bruno.exe") or _exe_found("bruno.exe") or _path_if_file(_bruno)
+
+    if entry.tool == "notepadplusplus":
+        _npp = _pf / "Notepad++" / "notepad++.exe"
+        _nppx = _pfx / "Notepad++" / "notepad++.exe"
+        return lambda: _exe_found("notepad++.exe") or _path_if_file(_npp) or _path_if_file(_nppx)
+
+    if entry.tool == "dbeaver":
+        _db = _pf / "DBeaver" / "dbeaver.exe"
+        return lambda: _exe_found("dbeaver.exe") or _path_if_file(_db)
+
+    if entry.tool == "winmerge":
+        _wm = _pf / "WinMerge" / "WinMergeU.exe"
+        _wmx = _pfx / "WinMerge" / "WinMergeU.exe"
+        return lambda: _exe_found("WinMergeU.exe") or _path_if_file(_wm) or _path_if_file(_wmx)
+
     if entry.tool == "godot":
         return lambda: bool(
             shutil.which("godot.exe") or shutil.which("Godot.exe") or shutil.which("godot4_console.exe")
