@@ -33,6 +33,23 @@ _WINDOWS_INTERNAL_DUPLICATES: Final[frozenset[str]] = frozenset({
 # When a real tool wins over a stub, that is the intended and desirable outcome.
 _WINDOWS_APPS_MARKER = "\\microsoft\\windowsapps\\"
 
+# Known benign conflicts that occur when a full dev stack is installed.
+# These are expected shadows with no functional impact; explain rather than alarm.
+_KNOWN_BENIGN_CONFLICTS: Final[dict[str, str]] = {
+    "klist.exe": (
+        "Expected: JDK ships its own klist.exe (Kerberos ticket tool) which shadows "
+        "the copy in C:\\Windows\\System32. Both do the same job; no action needed."
+    ),
+    "kubectl.exe": (
+        "Expected: Docker Desktop bundles kubectl alongside the winget-installed copy. "
+        "Both binaries are equivalent; Docker's copy wins by PATH order. No action needed."
+    ),
+    "code-tunnel.exe": (
+        "Expected: VS Code and Cursor both ship code-tunnel.exe. VS Code's copy takes "
+        "precedence but both editors work correctly. No action needed."
+    ),
+}
+
 # Inno Setup places a generic uninstaller in every app's private directory.
 # These are never run from PATH; "conflicts" between them are false positives.
 def _is_inno_uninstaller(basename: str) -> bool:
@@ -100,15 +117,17 @@ def audit_path() -> dict[str, Any]:
         if all(_WINDOWS_APPS_MARKER in p.lower() for p in losers):
             continue
 
+        hint = _KNOWN_BENIGN_CONFLICTS.get(
+            base,
+            "Earlier PATH entry shadows this name. Remove duplicates or "
+            "reorder PATH so the intended toolchain (Scoop/pyenv) wins.",
+        )
         conflicts.append(
             {
                 "basename": base,
                 "winner": w,
                 "alternates": losers,
-                "hint": (
-                    "Earlier PATH entry shadows this name. Remove duplicates or "
-                    "reorder PATH so the intended toolchain (Scoop/pyenv) wins."
-                ),
+                "hint": hint,
             }
         )
 
