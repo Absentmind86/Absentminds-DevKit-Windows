@@ -227,8 +227,9 @@ Describe "bootstrap/Verify-Bootstrap.ps1" {
     }
 
     It "does not use irm | iex in executable code (forces file-based verification)" {
-        # Strip comment blocks (.NOTES etc.) then check no live iex pipe remains
-        $codeOnly = ($VerifyContent -split "`n") | Where-Object { $_ -notmatch '^\s*#' }
+        # Strip <# ... #> block comments and #-prefixed lines, then check no live iex pipe remains
+        $stripped = [regex]::Replace($VerifyContent, '(?s)<#.*?#>', '')
+        $codeOnly = ($stripped -split "`n") | Where-Object { $_ -notmatch '^\s*#' }
         ($codeOnly -join "`n") | Should -Not -Match '\|\s*iex'
     }
 
