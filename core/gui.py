@@ -1436,6 +1436,55 @@ def main_gui() -> None:
             page.set_clipboard(_format_results_text())
             show_snack("Results copied to clipboard.")
 
+        def _run_verify_install(_: ft.ControlEvent | None = None) -> None:
+            import subprocess
+            import threading
+
+            verify_script = _REPO_ROOT / "scripts" / "verify-install.py"
+            results_display_col.controls.clear()
+            results_display_col.controls.append(
+                ft.Text("Running verification — this may take a few seconds…", italic=True, size=12)
+            )
+            page.update()
+
+            def _do_run() -> None:
+                try:
+                    proc = subprocess.run(
+                        [sys.executable, str(verify_script)],
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        timeout=90,
+                        cwd=str(_REPO_ROOT),
+                    )
+                    output = proc.stdout or ""
+                    if proc.returncode != 0 and proc.stderr:
+                        output += "\n--- stderr ---\n" + proc.stderr
+                except subprocess.TimeoutExpired:
+                    output = "Verification timed out after 90 seconds."
+                except Exception as exc:
+                    output = f"Error running verification: {exc}"
+
+                results_display_col.controls.clear()
+                results_display_col.controls.append(
+                    ft.TextField(
+                        value=output,
+                        read_only=True,
+                        multiline=True,
+                        min_lines=20,
+                        max_lines=60,
+                        text_size=11,
+                        expand=True,
+                    )
+                )
+                try:
+                    page.update()
+                except Exception:
+                    pass
+
+            threading.Thread(target=_do_run, daemon=True).start()
+
         report_issue_btn = ft.OutlinedButton(
             "Report failures on GitHub",
             on_click=_report_issue,
@@ -1461,6 +1510,11 @@ def main_gui() -> None:
                     ft.Row([
                         ft.OutlinedButton("Refresh results", on_click=_refresh_results),
                         ft.OutlinedButton("Copy results", on_click=_copy_results),
+                        ft.OutlinedButton(
+                            "Verify install",
+                            on_click=_run_verify_install,
+                            tooltip="Run scripts/verify-install.py — checks what actually installed vs the manifest",
+                        ),
                     ], spacing=8),
                     results_display_col,
                     ft.Row([
