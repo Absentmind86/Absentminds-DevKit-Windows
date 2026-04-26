@@ -382,6 +382,264 @@ def _gpus_from_wmi(
     return out
 
 
+# ---------------------------------------------------------------------------
+# macOS scan helpers (system_profiler JSON)
+# ---------------------------------------------------------------------------
+
+def _run_safe(argv: list[str], timeout_s: float = 30.0) -> tuple[int, str]:
+    """Run a subprocess, return (returncode, stdout). Never raises."""
+    try:
+        proc = subprocess.run(
+            argv, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=timeout_s,
+        )
+        return proc.returncode, proc.stdout or ""
+    except Exception:
+        return 127, ""
+
+
+def _scan_mac(warnings: list[str]) -> tuple[
+    dict[str, Any], dict[str, Any], dict[str, Any],
+    dict[str, Any], list[dict[str, Any]], dict[str, Any],
+]:
+    """Gather hardware facts on macOS via system_profiler JSON output."""
+    cpu: dict[str, Any] = {"vendor": None, "model": None, "physical_cores": 0,
+                           "logical_processors": 0, "socket_count": 0}
+    memory: dict[str, Any] = {"total_bytes": None, "free_bytes": None}
+    os_info: dict[str, Any] = {"caption": None, "version": None, "build": None,
+                               "architecture": None, "system_drive": None, "windows_directory": None}
+    storage: dict[str, Any] = {"volumes": [], "physical_disks": []}
+    gpus: list[dict[str, Any]] = []
+    system_block: dict[str, Any] = {"manufacturer": "Apple", "model": None,
+                                    "is_vm": False, "vm_hint": None}
+
+    # --- OS version ---
+    code, out = _run_safe(["sw_vers"])
+    if code == 0:
+        ver_match = re.search(r"ProductVersion:\s+(\S+)", out)
+        build_match = re.search(r"BuildVersion:\s+(\S+)", out)
+        name_match = re.search(r"ProductName:\s+(.+)", out)
+        os_info["version"] = ver_match.group(1) if ver_match else None
+        os_info["build"] = build_match.group(1) if build_match else None
+        os_info["caption"] = name_match.group(1).strip() if name_match else "macOS"
+    os_info["architecture"] = platform.machine()
+    os_info["system_drive"] = "/"
+
+    # --- Hardware overview (CPU + RAM + model) ---
+    code, out = _run_safe(["system_profiler", "SPHardwareDataType", "-json"])
+    if code == 0:
+        try:
+            data = json.loads(out)
+            hw = data.get("SPHardwareDataType", [{}])[0]
+            cpu["model"] = hw.get("cpu_type") or hw.get("chip_type")
+            cpu["vendor"] = "Apple" if "Apple" in (cpu["model"] or "") else None
+            cores = hw.get("number_processors")
+            if isinstance(cores, str) and cores.startswith("proc "):
+                # e.g. "proc 10:6:4" on Apple Silicon
+                parts = cores.split(":")
+                try:
+                    cpu["logical_processors"] = int(parts[0].split()[-1])
+                    cpu["physical_cores"] = int(parts[0].split()[-1])
+                except (ValueError, IndexError):
+                    pass
+            elif isinstance(cores, int):
+                cpu["physical_cores"] = cores
+                cpu["logical_processors"] = cores
+            cpu["socket_count"] = 1
+            mem_str = hw.get("physical_memory", "")
+            mem_match = re.match(r"([\d.]+)\s*(GB|MB|TB)", mem_str, re.I)
+            if mem_match:
+                val = float(mem_match.group(1))
+                unit = mem_match.group(2).upper()
+                multiplier = {"GB": 1024**3, "MB": 1024**2, "TB": 1024**4}.get(unit, 1)
+                memory["total_bytes"] = int(val * multiplier)
+            system_block["model"] = hw.get("machine_model") or hw.get("machine_name")
+        except (json.JSONDecodeError, IndexError, KeyError):
+            warnings.append("macOS hardware scan: failed to parse SPHardwareDataType JSON.")
+
+    # --- GPU ---
+    code, out = _run_safe(["system_profiler", "SPDisplaysDataType", "-json"])
+    if code == 0:
+        try:
+            data = json.loads(out)
+            for disp in data.get("SPDisplaysDataType", []):
+                name = disp.get("sppci_model") or disp.get("_name") or ""
+                vendor_raw = disp.get("sppci_vendor") or ""
+                vendor = "nvidia" if "nvidia" in vendor_raw.lower() else \
+                         "amd" if "amd" in vendor_raw.lower() else \
+                         "apple" if "apple" in (name + vendor_raw).lower() else \
+                         "intel" if "intel" in (name + vendor_raw).lower() else "unknown"
+                vram_str = disp.get("spdisplays_vram") or disp.get("spdisplays_vram_shared") or ""
+                vram: int | None = None
+                vram_match = re.match(r"([\d]+)\s*(GB|MB)", vram_str, re.I)
+                if vram_match:
+                    v, u = int(vram_match.group(1)), vram_match.group(2).upper()
+                    vram = v * (1024**3 if u == "GB" else 1024**2)
+                gpus.append({"vendor": vendor, "model": name, "vram_bytes_wmi": vram,
+                             "driver_version": None, "driver_date_raw": None, "pnp_device_id": None})
+        except (json.JSONDecodeError, KeyError):
+            warnings.append("macOS GPU scan: failed to parse SPDisplaysDataType JSON.")
+
+    # --- Storage ---
+    code, out = _run_safe(["df", "-k", "/"])
+    if code == 0:
+        lines = out.strip().splitlines()
+        if len(lines) >= 2:
+            parts = lines[1].split()
+            if len(parts) >= 4:
+                try:
+                    size_kb = int(parts[1])
+                    free_kb = int(parts[3])
+                    storage["volumes"].append({
+                        "device": parts[0], "label": "/", "filesystem": None,
+                        "size_bytes": size_kb * 1024, "free_bytes": free_kb * 1024,
+                    })
+                except ValueError:
+                    pass
+
+    # --- VM detection ---
+    vm_model = (system_block.get("model") or "").lower()
+    for needle, label in _VM_HINTS:
+        if needle in vm_model:
+            system_block["is_vm"] = True
+            system_block["vm_hint"] = label
+            break
+
+    return cpu, memory, os_info, storage, gpus, system_block
+
+
+# ---------------------------------------------------------------------------
+# Linux scan helpers (/proc, lsblk, lspci)
+# ---------------------------------------------------------------------------
+
+def _scan_lin(warnings: list[str]) -> tuple[
+    dict[str, Any], dict[str, Any], dict[str, Any],
+    dict[str, Any], list[dict[str, Any]], dict[str, Any],
+]:
+    """Gather hardware facts on Linux via /proc and standard CLI tools."""
+    cpu: dict[str, Any] = {"vendor": None, "model": None, "physical_cores": 0,
+                           "logical_processors": 0, "socket_count": 0}
+    memory: dict[str, Any] = {"total_bytes": None, "free_bytes": None}
+    os_info: dict[str, Any] = {"caption": None, "version": None, "build": None,
+                               "architecture": None, "system_drive": None, "windows_directory": None}
+    storage: dict[str, Any] = {"volumes": [], "physical_disks": []}
+    gpus: list[dict[str, Any]] = []
+    system_block: dict[str, Any] = {"manufacturer": None, "model": None,
+                                    "is_vm": False, "vm_hint": None}
+
+    # --- CPU from /proc/cpuinfo ---
+    try:
+        cpuinfo = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace")
+        models = re.findall(r"^model name\s*:\s*(.+)$", cpuinfo, re.M)
+        vendors = re.findall(r"^vendor_id\s*:\s*(\S+)$", cpuinfo, re.M)
+        phys_ids = set(re.findall(r"^physical id\s*:\s*(\d+)$", cpuinfo, re.M))
+        core_ids = set(re.findall(r"^core id\s*:\s*(\d+)$", cpuinfo, re.M))
+        processors = re.findall(r"^processor\s*:\s*\d+$", cpuinfo, re.M)
+        cpu["model"] = models[0].strip() if models else None
+        cpu["vendor"] = vendors[0].strip() if vendors else None
+        cpu["logical_processors"] = len(processors)
+        cpu["physical_cores"] = len(core_ids) * max(len(phys_ids), 1) if core_ids else len(processors)
+        cpu["socket_count"] = max(len(phys_ids), 1)
+    except OSError:
+        warnings.append("Linux CPU scan: /proc/cpuinfo not readable.")
+
+    # --- Memory from /proc/meminfo ---
+    try:
+        meminfo = Path("/proc/meminfo").read_text(encoding="utf-8", errors="replace")
+        total_match = re.search(r"^MemTotal:\s+(\d+)\s+kB$", meminfo, re.M)
+        free_match = re.search(r"^MemAvailable:\s+(\d+)\s+kB$", meminfo, re.M)
+        if total_match:
+            memory["total_bytes"] = int(total_match.group(1)) * 1024
+        if free_match:
+            memory["free_bytes"] = int(free_match.group(1)) * 1024
+    except OSError:
+        warnings.append("Linux memory scan: /proc/meminfo not readable.")
+
+    # --- OS from /etc/os-release ---
+    try:
+        osrel = Path("/etc/os-release").read_text(encoding="utf-8", errors="replace")
+        name_m = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', osrel, re.M)
+        ver_m = re.search(r'^VERSION_ID="?([^"\n]+)"?', osrel, re.M)
+        os_info["caption"] = name_m.group(1).strip() if name_m else "Linux"
+        os_info["version"] = ver_m.group(1).strip() if ver_m else platform.release()
+    except OSError:
+        os_info["caption"] = "Linux"
+        os_info["version"] = platform.release()
+    os_info["build"] = platform.release()
+    os_info["architecture"] = platform.machine()
+    os_info["system_drive"] = "/"
+
+    # --- Storage from lsblk ---
+    code, out = _run_safe(["lsblk", "-J", "-o", "NAME,SIZE,FSTYPE,MOUNTPOINT,TYPE"])
+    if code == 0:
+        try:
+            data = json.loads(out)
+            for dev in data.get("blockdevices", []):
+                if dev.get("type") != "disk":
+                    continue
+                storage["physical_disks"].append({
+                    "model": dev.get("name"), "interface_type": None,
+                    "media_type": None, "kind": "unknown",
+                    "size_bytes": None, "serial": None,
+                })
+                for child in dev.get("children", []):
+                    if child.get("mountpoint") == "/":
+                        storage["volumes"].append({
+                            "device": child.get("name"), "label": "/",
+                            "filesystem": child.get("fstype"),
+                            "size_bytes": None, "free_bytes": None,
+                        })
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # df fallback for / free space
+    if not storage["volumes"]:
+        code, out = _run_safe(["df", "-k", "/"])
+        if code == 0:
+            lines = out.strip().splitlines()
+            if len(lines) >= 2:
+                parts = lines[1].split()
+                if len(parts) >= 4:
+                    try:
+                        storage["volumes"].append({
+                            "device": parts[0], "label": "/", "filesystem": None,
+                            "size_bytes": int(parts[1]) * 1024,
+                            "free_bytes": int(parts[3]) * 1024,
+                        })
+                    except ValueError:
+                        pass
+
+    # --- GPU from lspci ---
+    code, out = _run_safe(["lspci"])
+    if code == 0:
+        for line in out.splitlines():
+            if re.search(r"VGA|3D|Display|Video", line, re.I):
+                name = re.sub(r"^[0-9a-f:.]+\s+\S+\s*:\s*", "", line, flags=re.I).strip()
+                vendor = "nvidia" if "nvidia" in name.lower() else \
+                         "amd" if re.search(r"\bamd\b|radeon", name, re.I) else \
+                         "intel" if "intel" in name.lower() else "unknown"
+                gpus.append({"vendor": vendor, "model": name, "vram_bytes_wmi": None,
+                             "driver_version": None, "driver_date_raw": None, "pnp_device_id": None})
+
+    # --- VM detection via systemd-detect-virt ---
+    code, out = _run_safe(["systemd-detect-virt", "--quiet"])
+    if code == 0:
+        hint = out.strip()
+        if hint and hint != "none":
+            system_block["is_vm"] = True
+            system_block["vm_hint"] = hint
+
+    # --- System manufacturer / model from DMI ---
+    for key, field in (("manufacturer", "sys_vendor"), ("model", "product_name")):
+        dmi_path = Path(f"/sys/class/dmi/id/{field}")
+        try:
+            system_block[key] = dmi_path.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            pass
+
+    return cpu, memory, os_info, storage, gpus, system_block
+
+
 def probe_command_on_path(commands: list[str]) -> dict[str, Any]:
     """Return ``{"present": bool, "path": str | null}`` for the first found executable."""
     for cmd in commands:
@@ -516,28 +774,33 @@ def build_system_profile(
     from scripts.gpu_detect import detect_gpu_for_pytorch, vendor_from_pnp_device_id
 
     warnings: list[str] = list(wmi_warnings or [])
-    if wmi_payload is not None:
-        wmi: dict[str, Any] = wmi_payload
-    elif platform.system() == "Windows":
-        fetched, w_warn = query_wmi_layer0()
-        warnings.extend(w_warn)
-        wmi = fetched if fetched is not None else {}
-    else:
-        wmi = {}
+    _plat = platform.system()
 
-    cpu = _cpu_from_wmi(wmi)
-    memory = _memory_from_wmi(wmi)
-    os_info = _os_from_wmi(wmi)
-    storage = _storage_from_wmi(wmi)
-    gpus = _gpus_from_wmi(wmi, vendor_from_pnp_device_id)
-    is_vm, vm_hint = _detect_vm(wmi)
-    cs = wmi.get("computerSystem") if isinstance(wmi.get("computerSystem"), dict) else {}
-    system_block: dict[str, Any] = {
-        "manufacturer": cs.get("Manufacturer"),
-        "model": cs.get("Model"),
-        "is_vm": is_vm,
-        "vm_hint": vm_hint,
-    }
+    if wmi_payload is not None or _plat == "Windows":
+        # Windows path — WMI
+        if wmi_payload is not None:
+            wmi: dict[str, Any] = wmi_payload
+        else:
+            fetched, w_warn = query_wmi_layer0()
+            warnings.extend(w_warn)
+            wmi = fetched if fetched is not None else {}
+        cpu = _cpu_from_wmi(wmi)
+        memory = _memory_from_wmi(wmi)
+        os_info = _os_from_wmi(wmi)
+        storage = _storage_from_wmi(wmi)
+        gpus = _gpus_from_wmi(wmi, vendor_from_pnp_device_id)
+        is_vm, vm_hint = _detect_vm(wmi)
+        cs = wmi.get("computerSystem") if isinstance(wmi.get("computerSystem"), dict) else {}
+        system_block: dict[str, Any] = {
+            "manufacturer": cs.get("Manufacturer"),
+            "model": cs.get("Model"),
+            "is_vm": is_vm,
+            "vm_hint": vm_hint,
+        }
+    elif _plat == "Darwin":
+        cpu, memory, os_info, storage, gpus, system_block = _scan_mac(warnings)
+    else:
+        cpu, memory, os_info, storage, gpus, system_block = _scan_lin(warnings)
 
     net_url = "https://connectivitycheck.gstatic.com/generate_204"
     net_ms, net_err = measure_http_head_latency_ms(net_url)
