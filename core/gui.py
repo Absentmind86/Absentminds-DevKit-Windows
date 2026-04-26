@@ -26,6 +26,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from core.platform_util import is_windows, open_file, terminal_launcher
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -1022,10 +1024,10 @@ def main_gui() -> None:
                 f"Read-Host 'Press Enter to close'"
             )
             try:
-                creation = subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0  # type: ignore[attr-defined]
                 subprocess.Popen(
                     ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
-                    cwd=str(_REPO_ROOT), creationflags=creation,
+                    cwd=str(_REPO_ROOT),
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,  # type: ignore[attr-defined]
                 )
                 show_snack("Restore script launched — approve the UAC prompt if prompted.")
             except OSError as exc:
@@ -1141,11 +1143,8 @@ def main_gui() -> None:
                 show_snack("No tools selected. Tick a profile or cherry-pick tools before installing.")
                 return
             args = _argv_for_installer(ui)
-            creation = 0
-            if sys.platform == "win32":
-                creation = subprocess.CREATE_NEW_CONSOLE  # type: ignore[attr-defined]
             try:
-                if sys.platform == "win32":
+                if is_windows():
                     # Wrap in PowerShell so the console stays open after the
                     # installer finishes and the user can read the full output.
                     py = sys.executable.replace("'", "''")
@@ -1163,12 +1162,15 @@ def main_gui() -> None:
                     )
                     subprocess.Popen(
                         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
-                        cwd=str(_REPO_ROOT), creationflags=creation,
+                        cwd=str(_REPO_ROOT),
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,  # type: ignore[attr-defined]
                     )
                 else:
+                    launcher = terminal_launcher()
+                    cmd = [sys.executable, "-m", "core.installer", *args]
                     subprocess.Popen(
-                        [sys.executable, "-m", "core.installer", *args],
-                        cwd=str(_REPO_ROOT), creationflags=creation,
+                        launcher + cmd if launcher else cmd,
+                        cwd=str(_REPO_ROOT),
                     )
                 show_snack("Installer started in a new console window.")
             except OSError as exc:
@@ -1262,36 +1264,45 @@ def main_gui() -> None:
                 [
                     ft.Text("Install options", weight=ft.FontWeight.BOLD, size=18),
                     dry_run,
-                    ft.Row([
-                        run_sanitation,
-                        ft.IconButton(
-                            icon=ft.Icons.INFO_OUTLINE,
-                            tooltip="See exactly what registry and service tweaks each preset applies",
-                            icon_size=16,
-                            on_click=open_sanitation_info,
-                        ),
-                    ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                    sanitation_presets_section,
                     ft.Container(
-                        content=ft.Row([
-                            ft.OutlinedButton(
-                                "Restore Windows defaults",
-                                icon=ft.Icons.UNDO,
-                                on_click=run_restore_defaults,
-                                style=ft.ButtonStyle(color=ft.Colors.ON_SURFACE_VARIANT),
+                        visible=is_windows(),
+                        content=ft.Column([
+                            ft.Row([
+                                run_sanitation,
+                                ft.IconButton(
+                                    icon=ft.Icons.INFO_OUTLINE,
+                                    tooltip="See exactly what registry and service tweaks each preset applies",
+                                    icon_size=16,
+                                    on_click=open_sanitation_info,
+                                ),
+                            ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            sanitation_presets_section,
+                            ft.Container(
+                                content=ft.Row([
+                                    ft.OutlinedButton(
+                                        "Restore Windows defaults",
+                                        icon=ft.Icons.UNDO,
+                                        on_click=run_restore_defaults,
+                                        style=ft.ButtonStyle(color=ft.Colors.ON_SURFACE_VARIANT),
+                                    ),
+                                    ft.Text(
+                                        "Undo sanitization — restores registry & services to Windows defaults.",
+                                        size=11, italic=True, color=ft.Colors.ON_SURFACE_VARIANT, expand=True,
+                                    ),
+                                ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
+                                padding=ft.padding.only(top=2, bottom=2),
                             ),
-                            ft.Text(
-                                "Undo sanitization — restores registry & services to Windows defaults.",
-                                size=11, italic=True, color=ft.Colors.ON_SURFACE_VARIANT, expand=True,
-                            ),
-                        ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
-                        padding=ft.padding.only(top=2, bottom=2),
+                            skip_rp,
+                        ], spacing=4),
                     ),
-                    skip_rp, skip_dotfiles, skip_rust, assume_yes, skip_summary,
+                    skip_dotfiles, skip_rust, assume_yes, skip_summary,
                     ft.Divider(),
                     ml_wheels, ml_base,
                     ft.Divider(),
-                    enable_wsl, wsl_distro, wsl_skip,
+                    ft.Container(
+                        visible=is_windows(),
+                        content=ft.Column([enable_wsl, wsl_distro, wsl_skip], spacing=4),
+                    ),
                     ft.Divider(),
                     reuse_layer0, reuse_layer0_path,
                 ],
@@ -1401,7 +1412,6 @@ def main_gui() -> None:
 
         def _open_html_report(_: ft.ControlEvent | None = None) -> None:
             """Open the HTML report in the default browser."""
-            import os
             report_path = _REPO_ROOT / "post-install-report.html"
             if not report_path.is_file():
                 snack.content.value = f"Report not found: {report_path}"
@@ -1409,7 +1419,7 @@ def main_gui() -> None:
                 page.update()
                 return
             try:
-                os.startfile(str(report_path))
+                open_file(str(report_path))
             except Exception as e:
                 snack.content.value = f"Error opening report: {e}"
                 snack.open = True
