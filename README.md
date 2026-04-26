@@ -229,7 +229,7 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 
 `git clone` does not attach a zone tag, so cloning from the command line (as shown above) does not require this step.
 
-**Scripts are not code-signed in v0.8.** The `.ps1` files can be read in full at [github.com/Absentmind86/am-devkit](https://github.com/Absentmind86/am-devkit) before you run them. Code signing via Azure Trusted Signing is planned for v1.0.
+**Scripts are not code-signed.** The `.ps1` files can be read in full at [github.com/Absentmind86/am-devkit](https://github.com/Absentmind86/am-devkit) before you run them.
 
 ---
 

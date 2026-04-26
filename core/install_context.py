@@ -14,7 +14,7 @@ def _read_version() -> str:
     try:
         return _VERSION_FILE.read_text(encoding="utf-8").strip()
     except OSError:
-        return "0.8.0-phase4"
+        return "1.0.0"
 
 
 @dataclass

@@ -207,7 +207,7 @@ absentmind-devkit/
   if you bump the schema again, update both the writer and every consumer in the same change.
 
 ### Version String
-- Authoritative version lives in the repo-root `VERSION` file (plain text, e.g. `0.8.0-phase4`).
+- Authoritative version lives in the repo-root `VERSION` file (plain text, e.g. `1.0.0`).
 - `core/install_context.py::_read_version()` reads it at module load; falls back to the
   hard-coded string if the file is missing (never happens in a normal clone).
 - To cut a new version: edit `VERSION`, update `CHANGELOG.md`, tag the commit. Do not hard-code

@@ -10,7 +10,7 @@
 [devkit]
 # The installer version is sourced from the VERSION file, not from here.
 # Uncomment to document which config snapshot corresponds to which release.
-# version = "0.8.0-phase4"
+# version = "1.0.0"
 
 # [install]
 # dry_run = false              # Default: false. Set true to preview without installing.

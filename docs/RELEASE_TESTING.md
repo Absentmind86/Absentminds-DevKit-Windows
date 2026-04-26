@@ -30,7 +30,7 @@ From repo root:
       Get-ChildItem core/*.py | Where-Object { $_.Name -ne 'gui.py' } |
         ForEach-Object { python -m py_compile $_.FullName }
       ```
-- [ ] `cat VERSION` matches the expected release string (e.g. `0.8.0-phase4`)
+- [ ] `cat VERSION` matches the expected release string (e.g. `1.0.0`)
 - [ ] `python scripts/test_gpu_pytorch_matrix.py` — all GPU/PyTorch path scenarios pass (exit 0)
       *(confirm scenario count matches the "X/X matched" line in output)*
 
@@ -238,10 +238,10 @@ Ready to tag: yes / no
 
 ## 13. Completed sign-offs
 
-### v0.8.0-phase4 — 2026-04-25
+### v1.0.0 — 2026-04-25
 
 ```
-Release: v0.8.0-phase4
+Release: v1.0.0
 Commit: 1b73d9de5c0155a0f297d809c8ac484451a19bf7
 Tester: Absentmind
 Date: 2026-04-25

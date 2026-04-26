@@ -7,7 +7,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [0.8.0-phase4] — 2026-04-25
+## [1.0.0] — 2026-04-25
 
 ### Breaking changes
 - **`--winutil-latest` CLI flag removed.** Sanitization is now native PowerShell;
