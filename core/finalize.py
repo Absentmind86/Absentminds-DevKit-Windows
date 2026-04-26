@@ -203,6 +203,9 @@ def _powertoys_settings_source_dir() -> Path | None:
 
 def _backup_powertoys_settings(ctx: InstallContext, manifest: Manifest, console: Console) -> None:
     """Copy PowerToys JSON settings into am-devkit-out for restore on a new PC (Extras profile)."""
+    from core.platform_util import is_windows
+    if not is_windows():
+        return
     if not ctx.profile_selected("extras"):
         return
     if "powertoys" in ctx.catalog_exclude_tools:
@@ -446,11 +449,13 @@ def run_finalize(ctx: InstallContext, manifest: Manifest, console: Console) -> d
     manifest.flush()
     console.print(f"  [done] Manifest -> {ctx.manifest_path}")
 
-    try:
-        rw = refresh_restore_script_from_disk(ctx.manifest_path, ctx.repo_root)
-        console.print(f"  [done] Restore winget script -> {rw}")
-    except OSError as exc:
-        console.print(f"  [failed] Restore script generation: {exc}")
+    from core.platform_util import is_windows as _is_win
+    if _is_win():
+        try:
+            rw = refresh_restore_script_from_disk(ctx.manifest_path, ctx.repo_root)
+            console.print(f"  [done] Restore winget script -> {rw}")
+        except OSError as exc:
+            console.print(f"  [failed] Restore script generation: {exc}")
 
     snap = manifest.entries_snapshot()
     launchpad_fragment = build_launchpad_section(

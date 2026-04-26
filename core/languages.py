@@ -9,6 +9,8 @@ Rustup is non-catalog (rustup-init.exe) — profile-gated via _wants_rust().
 from __future__ import annotations
 
 import shutil
+import subprocess
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from core.catalog_install import install_catalog_layer
@@ -57,6 +59,52 @@ def _ensure_python(ctx: InstallContext, manifest: Manifest, console: Console) ->
                              detect=lambda: shutil.which("python3") is not None)
 
 
+def _ensure_nvm_linux(ctx: InstallContext, manifest: Manifest, console: Console) -> None:
+    """Install nvm on Linux via the official curl installer (no apt package exists)."""
+    if not ctx.profile_selected("web-fullstack"):
+        return
+
+    detect = lambda: shutil.which("nvm") is not None or (  # noqa: E731
+        (Path.home() / ".nvm" / "nvm.sh").is_file()
+    )
+    if detect():
+        manifest.record_tool(tool="nvm", layer="languages", status="skipped",
+                             install_method="curl-installer",
+                             notes="~/.nvm/nvm.sh already present.")
+        console.print("  [skipped] nvm — already installed")
+        return
+
+    if ctx.dry_run:
+        manifest.record_tool(tool="nvm", layer="languages", status="planned",
+                             install_method="curl-installer",
+                             notes="Would run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash")
+        console.print("  [planned] nvm — dry-run")
+        return
+
+    console.print("  [installing] nvm via curl installer…")
+    try:
+        proc = subprocess.run(
+            ["bash", "-c",
+             "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300.0,
+        )
+        combined = (proc.stdout + "\n" + proc.stderr).strip()
+        if proc.returncode == 0:
+            manifest.record_tool(tool="nvm", layer="languages", status="installed",
+                                 install_method="curl-installer",
+                                 notes=combined[-2000:] if combined else None)
+            console.print("  [done] nvm (restart shell to activate)")
+        else:
+            manifest.record_tool(tool="nvm", layer="languages", status="failed",
+                                 install_method="curl-installer",
+                                 notes=f"exit {proc.returncode}: {combined[-2000:]}")
+            console.print(f"  [failed] nvm (exit {proc.returncode})")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        manifest.record_tool(tool="nvm", layer="languages", status="failed",
+                             install_method="curl-installer", notes=str(exc))
+        console.print(f"  [failed] nvm — {exc}")
+
+
 def run_languages(ctx: InstallContext, manifest: Manifest, console: Console) -> None:
     console.print("[bold]Layer 4 — Languages & runtimes[/bold]")
 
@@ -87,3 +135,8 @@ def run_languages(ctx: InstallContext, manifest: Manifest, console: Console) -> 
         console.print("  [skipped] rustup — no systems/game-dev/hardware-robotics/ai-ml")
 
     install_catalog_layer(ctx, manifest, console, "languages")
+
+    # nvm: Windows uses nvm-windows (catalog), macOS uses brew (catalog via macos_id="nvm").
+    # Linux has no apt package — run the official curl installer.
+    if not is_windows() and not is_macos():
+        _ensure_nvm_linux(ctx, manifest, console)

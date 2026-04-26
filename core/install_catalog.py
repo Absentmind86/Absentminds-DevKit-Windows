@@ -204,7 +204,8 @@ WINGET_CATALOG: tuple[CatalogEntry, ...] = (
         choco_id="uv"),
     CatalogEntry("nvm-windows",
         "CoreyButler.NVMforWindows", "languages", P_WEB, "nvm.exe",
-        choco_id="nvm"),
+        macos_id="nvm",
+        choco_id="nvm"),  # Linux handled via curl installer in languages.py
     CatalogEntry("golang",
         "GoLang.Go", "languages", P_WEB_AI_SYS, "go.exe",
         linux_id="golang-go", macos_id="go",

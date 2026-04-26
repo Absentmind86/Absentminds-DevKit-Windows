@@ -7,6 +7,8 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from core.platform_util import is_windows
+
 
 def _esc(s: str) -> str:
     return html.escape(s, quote=True)
@@ -36,49 +38,50 @@ def write_launchpad_scripts(
     out = repo_root / "am-devkit-out" / "launchpad"
     out.mkdir(parents=True, exist_ok=True)
 
-    (out / "open-vscode.cmd").write_text(
-        textwrap.dedent(
-            r"""
-            @echo off
-            start "" "%LocalAppData%\Programs\Microsoft VS Code\Code.exe"
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+    if is_windows():
+        (out / "open-vscode.cmd").write_text(
+            textwrap.dedent(
+                r"""
+                @echo off
+                start "" "%LocalAppData%\Programs\Microsoft VS Code\Code.exe"
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
 
-    (out / "open-cursor.cmd").write_text(
-        textwrap.dedent(
-            r"""
-            @echo off
-            start "" "%LocalAppData%\Programs\cursor\Cursor.exe"
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+        (out / "open-cursor.cmd").write_text(
+            textwrap.dedent(
+                r"""
+                @echo off
+                start "" "%LocalAppData%\Programs\cursor\Cursor.exe"
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
 
-    (out / "open-docker-desktop.cmd").write_text(
-        textwrap.dedent(
-            r"""
-            @echo off
-            start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+        (out / "open-docker-desktop.cmd").write_text(
+            textwrap.dedent(
+                r"""
+                @echo off
+                start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
 
-    (out / "ollama-run-small.cmd").write_text(
-        textwrap.dedent(
-            r"""
-            @echo off
-            ollama run llama3.2
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+        (out / "ollama-run-small.cmd").write_text(
+            textwrap.dedent(
+                r"""
+                @echo off
+                ollama run llama3.2
+                """
+            ).strip()
+            + "\n",
+            encoding="utf-8",
+        )
 
     verify_py = textwrap.dedent(
         '''
@@ -105,7 +108,7 @@ def write_launchpad_scripts(
     ).strip()
     (out / "verify-torch-cuda.py").write_text(verify_py + "\n", encoding="utf-8")
 
-    if "extras" in profiles:
+    if is_windows() and "extras" in profiles:
         (out / "open-am-devkit-vault.cmd").write_text(
             textwrap.dedent(
                 r"""
@@ -134,32 +137,33 @@ def build_launchpad_html(*, rel_dir: str, profiles: list[str], tools: list[dict[
             "</li>"
         )
 
-    add(
-        "Open VS Code",
-        "open-vscode.cmd",
-        "Double-click in Explorer, or run from this folder in cmd.",
-    )
-
-    if _tool_usable(_tool_row(tools, "cursor")) or "ai-ml" in prof or "web-fullstack" in prof:
+    if is_windows():
         add(
-            "Open Cursor",
-            "open-cursor.cmd",
-            "If install path differs, edit the .cmd or launch Cursor from Start.",
+            "Open VS Code",
+            "open-vscode.cmd",
+            "Double-click in Explorer, or run from this folder in cmd.",
         )
 
-    if _tool_usable(_tool_row(tools, "docker-desktop")) or "ai-ml" in prof or "web-fullstack" in prof:
-        add(
-            "Open Docker Desktop",
-            "open-docker-desktop.cmd",
-            "Edit this file if Docker is installed to a non-default path.",
-        )
+        if _tool_usable(_tool_row(tools, "cursor")) or "ai-ml" in prof or "web-fullstack" in prof:
+            add(
+                "Open Cursor",
+                "open-cursor.cmd",
+                "If install path differs, edit the .cmd or launch Cursor from Start.",
+            )
 
-    if "ai-ml" in prof and _tool_usable(_tool_row(tools, "ollama")):
-        add(
-            "Run a small local model (Ollama)",
-            "ollama-run-small.cmd",
-            "Requires ollama on PATH; pulls/runs llama3.2 on first use.",
-        )
+        if _tool_usable(_tool_row(tools, "docker-desktop")) or "ai-ml" in prof or "web-fullstack" in prof:
+            add(
+                "Open Docker Desktop",
+                "open-docker-desktop.cmd",
+                "Edit this file if Docker is installed to a non-default path.",
+            )
+
+        if "ai-ml" in prof and _tool_usable(_tool_row(tools, "ollama")):
+            add(
+                "Run a small local model (Ollama)",
+                "ollama-run-small.cmd",
+                "Requires ollama on PATH; pulls/runs llama3.2 on first use.",
+            )
 
     if "ai-ml" in prof:
         kind = str(pytorch.get("torch_path_kind") or "")
@@ -170,7 +174,7 @@ def build_launchpad_html(*, rel_dir: str, profiles: list[str], tools: list[dict[
                 "In a terminal: cd to this folder, then run your Python against verify-torch-cuda.py.",
             )
 
-    if "extras" in prof and (
+    if is_windows() and "extras" in prof and (
         _tool_usable(_tool_row(tools, "obsidian-vault"))
         or _tool_usable(_tool_row(tools, "obsidian"))
     ):
