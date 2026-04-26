@@ -1,0 +1,450 @@
+AM-DevKit Cross-Platform Implementation Plan
+============================================
+Goal: Add Linux + macOS support with minimal disruption to existing Windows code.
+Branch: feature/cross-platform
+
+
+=== CATALOG SCHEMA CHANGES ===
+
+Current: WingetCatalogEntry(tool, winget_id, layer, profiles, detect_exe)
+
+New: CatalogEntry(tool, win_id, linux_id, macos_id, layer, profiles, detect_exe)
+
+- Rename WingetCatalogEntry -> CatalogEntry (or keep as alias for backward compat)
+- Rename winget_id -> win_id
+- Add linux_id: str | None  (None = not available / skip on Linux)
+- Add macos_id: str | None  (None = not available / skip on macOS)
+- All existing entries: linux_id=None, macos_id=None initially
+  (safe default — Windows behavior unchanged)
+- Fill in linux_id / macos_id incrementally per tool
+
+Example:
+  CatalogEntry(
+      tool="vscode",
+      win_id="Microsoft.VisualStudioCode",
+      linux_id="code",              # apt/snap package name
+      macos_id="visual-studio-code", # brew cask name
+      layer="editors",
+      profiles=None,
+      detect_exe="code",
+  )
+
+Where this lives: core/install_catalog.py (edit in place — just rename + add fields)
+
+Risk: All existing code that references .winget_id must be updated to .win_id.
+Search: grep -r "\.winget_id" core/ tests/ — update each callsite.
+Tests in tests/test_install_catalog.py will catch regressions.
+
+
+=== OS DETECTION — NEW FILE: core/platform_util.py ===
+
+Create one small module that everything imports. Never scatter sys.platform checks.
+
+  import sys
+  import shutil
+
+  def current_os() -> str:
+      """Returns 'windows', 'linux', or 'macos'."""
+      if sys.platform == "win32":
+          return "windows"
+      elif sys.platform == "darwin":
+          return "macos"
+      else:
+          return "linux"
+
+  def primary_pkg_manager() -> str:
+      """Returns the primary package manager for the current OS."""
+      os = current_os()
+      if os == "windows":
+          return "winget"
+      elif os == "macos":
+          return "brew"
+      else:
+          # Linux: detect installed manager
+          for mgr in ("apt", "dnf", "pacman", "zypper"):
+              if shutil.which(mgr):
+                  return mgr
+          return "apt"  # safe default
+
+  def fallback_pkg_manager() -> str:
+      os = current_os()
+      if os == "windows":
+          return "choco"
+      elif os == "macos":
+          return "port"   # MacPorts as brew fallback (rare)
+      else:
+          return None     # Linux: no standard fallback
+
+  def is_windows() -> bool: return current_os() == "windows"
+  def is_linux() -> bool:   return current_os() == "linux"
+  def is_macos() -> bool:   return current_os() == "macos"
+
+Import pattern everywhere else: from core.platform_util import current_os, is_windows
+
+
+=== INSTALL DISPATCH — core/catalog_install.py ===
+
+Current: calls ensure_winget_package(entry.winget_id, ...)
+
+New: dispatcher reads the right ID + calls the right installer function.
+
+  from core.platform_util import current_os, primary_pkg_manager, fallback_pkg_manager
+
+  def get_package_id(entry: CatalogEntry) -> str | None:
+      os = current_os()
+      if os == "windows":
+          return entry.win_id
+      elif os == "linux":
+          return entry.linux_id
+      elif os == "macos":
+          return entry.macos_id
+      return None
+
+  def install_catalog_entry(entry, ctx):
+      pkg_id = get_package_id(entry)
+      if pkg_id is None:
+          ctx.log(f"[skip] {entry.tool} — not available on {current_os()}")
+          return InstallResult.SKIPPED
+
+      mgr = primary_pkg_manager()
+      result = _run_install(mgr, pkg_id, ctx)
+
+      if result == InstallResult.FAILED:
+          fallback = fallback_pkg_manager()
+          if fallback:
+              ctx.log(f"[retry] {entry.tool} via {fallback}")
+              result = _run_install(fallback, pkg_id, ctx)
+
+      return result
+
+  def _run_install(manager: str, pkg_id: str, ctx) -> InstallResult:
+      if manager == "winget":
+          return ensure_winget_package(pkg_id, ctx)
+      elif manager == "brew":
+          return run_brew_install(pkg_id, ctx)
+      elif manager in ("apt", "dnf", "pacman", "zypper"):
+          return run_linux_install(manager, pkg_id, ctx)
+      elif manager == "choco":
+          return ensure_choco_package(pkg_id, ctx)
+
+New helpers to add (small, each ~15 lines):
+  core/brew_util.py   — run_brew_install(pkg_id, ctx)
+  core/linux_util.py  — run_linux_install(manager, pkg_id, ctx)
+
+These mirror the pattern in core/winget_util.py. Keep them thin wrappers.
+
+
+=== FALLBACK LOGIC ===
+
+Windows:
+  1. winget install <win_id>
+  2. If exit code != 0: choco install <win_id>  (choco IDs differ — may need choco_id field later)
+
+macOS:
+  1. brew install <macos_id>        (formula)
+  2. brew install --cask <macos_id> (cask) — try cask on failure if formula fails
+  No MacPorts fallback needed in v1; too niche.
+
+Linux:
+  1. Detect: apt / dnf / pacman / zypper (in that order, first found wins)
+  2. Run: sudo <manager> install -y <linux_id>
+  3. No cross-manager fallback in v1 — if the distro's manager doesn't have it, mark SKIPPED.
+  Note: Some tools on Linux need a snap/flatpak/AppImage fallback. Flag these per-entry
+  (future field: linux_snap_id) — out of scope for v1.
+
+
+=== BOOTSTRAP ENTRY POINTS ===
+
+bootstrap/win/fresh.ps1   — existing fresh.ps1, moved here (done)
+bootstrap/lin/fresh.sh    — new Linux bootstrapper
+bootstrap/mac/fresh.sh    — new macOS bootstrapper
+
+bootstrap/install.ps1 stays in place (repo-internal launcher, not a bootstrapper).
+Once the repo is cloned, all platforms hand off to install.ps1 / python -m core.installer.
+
+bootstrap/lin/fresh.sh
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  REPO="https://github.com/Absentmind86/am-devkit.git"
+  INSTALL_PATH="${INSTALL_PATH:-$HOME/am-devkit}"
+  BRANCH="${BRANCH:-main}"
+
+  # 1. Ensure git
+  if ! command -v git &>/dev/null; then
+      sudo apt-get install -y git 2>/dev/null \
+          || sudo dnf install -y git 2>/dev/null \
+          || sudo pacman -Sy --noconfirm git
+  fi
+
+  # 2. Clone repo
+  if [ ! -d "$INSTALL_PATH/.git" ]; then
+      git clone --branch "$BRANCH" "$REPO" "$INSTALL_PATH"
+  else
+      git -C "$INSTALL_PATH" pull --ff-only
+  fi
+
+  cd "$INSTALL_PATH"
+
+  # 3. Ensure Python 3.11+
+  if ! command -v python3 &>/dev/null; then
+      sudo apt-get install -y python3 python3-pip 2>/dev/null \
+          || sudo dnf install -y python3 python3-pip 2>/dev/null \
+          || sudo pacman -Sy --noconfirm python python-pip
+  fi
+
+  PYVER=$(python3 -c "import sys; print(sys.version_info[:2] >= (3,11))")
+  if [ "$PYVER" != "True" ]; then
+      echo "Python 3.11+ required. Please upgrade and re-run."
+      exit 1
+  fi
+
+  # 4. Install pip deps
+  python3 -m pip install -r requirements.txt --quiet
+
+  # 5. Launch
+  MODE="${1:-gui}"
+  if [ "$MODE" = "gui" ]; then
+      python3 -m core.gui
+  elif [ "$MODE" = "scan" ]; then
+      python3 core/system_scan.py
+  else
+      python3 -m core.installer "$@"
+  fi
+
+bootstrap/mac/fresh.sh
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  REPO="https://github.com/Absentmind86/am-devkit.git"
+  INSTALL_PATH="${INSTALL_PATH:-$HOME/am-devkit}"
+  BRANCH="${BRANCH:-main}"
+
+  # 1. Ensure Homebrew
+  if ! command -v brew &>/dev/null; then
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+
+  # 2. Ensure git (brew provides it on macOS)
+  if ! command -v git &>/dev/null; then
+      brew install git
+  fi
+
+  # 3. Clone repo
+  if [ ! -d "$INSTALL_PATH/.git" ]; then
+      git clone --branch "$BRANCH" "$REPO" "$INSTALL_PATH"
+  else
+      git -C "$INSTALL_PATH" pull --ff-only
+  fi
+
+  cd "$INSTALL_PATH"
+
+  # 4. Ensure Python 3.11+
+  if ! command -v python3 &>/dev/null || ! python3 -c "import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)" 2>/dev/null; then
+      brew install python@3.12
+  fi
+
+  # 5. Install pip deps
+  python3 -m pip install -r requirements.txt --quiet
+
+  # 6. Launch
+  MODE="${1:-gui}"
+  if [ "$MODE" = "gui" ]; then
+      python3 -m core.gui
+  elif [ "$MODE" = "scan" ]; then
+      python3 core/system_scan.py
+  else
+      python3 -m core.installer "$@"
+  fi
+
+
+=== SYSTEM SCAN — core/system_scan.py ===
+
+Current: All WMI/PowerShell queries — Windows-only.
+
+Strategy: Guard blocks, not a full rewrite.
+
+  def scan_hardware() -> dict:
+      if is_windows():
+          return _scan_windows()   # existing code, unchanged
+      elif is_macos():
+          return _scan_macos()     # new: system_profiler XML parsing
+      else:
+          return _scan_linux()     # new: /proc/cpuinfo, lshw, dmidecode
+
+  def _scan_macos() -> dict:
+      # system_profiler SPHardwareDataType -xml → parse plist
+      # system_profiler SPDisplaysDataType -xml → GPU info
+      # Use subprocess + plistlib (stdlib)
+
+  def _scan_linux() -> dict:
+      # /proc/cpuinfo → CPU info
+      # free -b → RAM
+      # lsblk -J → disk info
+      # lspci | grep -i vga → GPU (if lspci available)
+      # Graceful degradation: if a tool isn't present, return "unknown"
+
+Output schema (system-profile.json) stays identical — fill unknowns with null.
+This means all downstream code (pre_install_summary, GUI summary tab) needs zero changes.
+
+
+=== GUI CHANGES — core/gui.py ===
+
+Minimal changes. Three areas:
+
+1. Grey out Windows-only tabs/controls on non-Windows:
+   - "Install Options" tab: wrap Sanitation section in `if is_windows()`
+     Show a greyed label "Windows Sanitation — not available on this platform" instead.
+   - Restore Point toggle: hide on non-Windows.
+   - WSL section: hide on non-Windows.
+
+2. Subprocess launching (opening new console):
+   Current: subprocess.CREATE_NEW_CONSOLE (Windows-only flag)
+   Fix:
+     if is_windows():
+         subprocess.Popen([...], creationflags=subprocess.CREATE_NEW_CONSOLE)
+     else:
+         # macOS: open a new Terminal.app window
+         # Linux: try gnome-terminal, konsole, xterm in order
+         subprocess.Popen(_terminal_launcher() + ["python3", "-m", "core.installer", ...])
+
+   Add helper in core/platform_util.py:
+     def terminal_launcher() -> list[str]:
+         if is_macos():
+             return ["open", "-a", "Terminal"]
+         for term in ("gnome-terminal", "konsole", "xfce4-terminal", "xterm"):
+             if shutil.which(term):
+                 return [term, "--"]
+         return []  # fallback: run in same terminal
+
+3. HTML report opening:
+   Current: os.startfile(path)  — Windows-only
+   Fix:
+     if is_windows():
+         os.startfile(path)
+     elif is_macos():
+         subprocess.run(["open", str(path)])
+     else:
+         subprocess.run(["xdg-open", str(path)])
+
+4. PowerShell restore script launch:
+   Current: powershell.exe -Command ...
+   On Linux/macOS: restore-devkit is a .sh script (future work) — skip this button or show
+   "Windows only" tooltip on non-Windows. For v1 that's fine.
+
+
+=== NEW FILES SUMMARY ===
+
+core/platform_util.py   — OS detection, package manager selection, terminal launcher
+core/brew_util.py       — macOS Homebrew install wrapper (mirrors winget_util.py)
+core/linux_util.py      — Linux apt/dnf/pacman install wrapper
+bootstrap/lin/fresh.sh  — Linux bootstrapper (clone + Python + launch)
+bootstrap/mac/fresh.sh  — macOS bootstrapper (clone + Homebrew + Python + launch)
+(bootstrap/win/fresh.ps1 already moved)
+
+
+=== FILES TO MODIFY ===
+
+core/install_catalog.py       — Rename WingetCatalogEntry → CatalogEntry, winget_id → win_id,
+                               add linux_id + macos_id + macos_cask fields (safe defaults)
+core/catalog_install.py       — Route to correct installer based on OS
+core/system_scan.py           — Add _scan_mac() and _scan_lin() behind guards
+core/gui.py                   — 3 targeted fixes (subprocess, os.startfile, sanitation visibility)
+core/winget_util.py           — No changes needed
+tests/test_install_catalog.py — Update field names, add basic cross-platform routing tests
+
+
+=== WHAT STAYS 100% UNCHANGED ===
+
+- All profile logic (profiles, frozensets, P_AI, P_WEB, etc.)
+- InstallContext dataclass
+- Manifest generation
+- Layer ordering and orchestration (installer.py)
+- Pre-install summary
+- Dotfile seeding
+- Post-install report HTML
+- Extras system
+- All Windows sanitization code (just guarded behind is_windows())
+- CI workflow (Windows-only for now — add lin/mac CI runners in v2)
+
+
+=== IMPLEMENTATION ORDER ===
+
+Step 1 — core/platform_util.py (new file, no dependencies)
+Step 2 — Rename WingetCatalogEntry fields in install_catalog.py; update all .winget_id refs
+Step 3 — core/catalog_install.py dispatch logic + brew_util.py + linux_util.py
+Step 4 — system_scan.py guards + _scan_macos() + _scan_linux()
+Step 5 — gui.py three targeted fixes
+Step 6 — bootstrap/lin/fresh.sh + bootstrap/mac/fresh.sh
+Step 7 — Populate linux_id / macos_id for Core tools (Git, Python, VS Code, etc.)
+Step 8 — Tests: update field names, add routing smoke tests
+
+Each step is independently committable. Steps 1-3 can be done without any macOS/Linux
+machine — they're pure Python logic changes.
+
+
+=== RISKS AND BREAKING CHANGES ===
+
+1. winget_id rename → win_id
+   Risk: Any code referencing .winget_id breaks at runtime (not caught by ruff).
+   Mitigation: grep -rn "winget_id" . before committing Step 2.
+   Tests will catch most callsites.
+
+2. Flet (GUI framework) cross-platform behavior
+   Flet targets Flutter — it should work on Linux/macOS. But subprocess.CREATE_NEW_CONSOLE
+   is Windows-only and will raise on Linux. This is the highest-risk GUI change.
+   Mitigation: The gui.py fix in Step 5 is a targeted guard, not a rewrite.
+
+3. system_scan.py — lshw / dmidecode may not be installed on all Linux distros
+   Mitigation: Wrap every Linux scan call in try/except; return {"status": "unknown"} on failure.
+   The scan is informational — a failed scan must never abort the install.
+
+4. sudo requirements on Linux
+   apt/dnf/pacman all require sudo. The Linux bootstrapper must either:
+   a. Run as root (not recommended)
+   b. Prompt for sudo password once at the start and cache it for the session
+   Recommendation: prepend `sudo -v` at the top of fresh.sh to cache credentials,
+   then use `sudo apt install` in linux_util.py. Let the OS handle re-prompting.
+
+5. Brew cask vs formula distinction
+   Some macOS packages are casks (GUI apps), some are formulas (CLI tools).
+   `brew install vscode` fails — it's `brew install --cask visual-studio-code`.
+   Options:
+   a. Add a macos_cask: bool field to CatalogEntry (cleanest long-term)
+   b. Try formula first, fall back to --cask on failure (slower, but no schema change)
+   Recommendation: go with option (a) — add macos_cask: bool = False to CatalogEntry.
+   Only adds one field and makes intent explicit.
+
+6. Linux package names vary by distro
+   "code" on apt (Ubuntu) is installed via Microsoft's repo, not the default apt sources.
+   Some tools (VS Code, Docker) require adding a third-party apt repo first.
+   This is the main complexity driver for Linux support.
+   For v1: document which tools require manual repo setup; mark others as SKIPPED with a note.
+   For v2: add a pre_install_hook field to CatalogEntry for repo-add scripts.
+
+
+=== OUT OF SCOPE FOR V1 ===
+
+- macOS sanitization (defaults write privacy tweaks, etc.)
+- Linux sanitization
+- Cross-platform dotfile seeding beyond what already works (git/bash dotfiles will work;
+  PowerShell profile seeding is Windows-only, already guarded)
+- CI on lin/mac runners (add in v2 once logic is stable)
+- Snap / Flatpak / AppImage fallbacks
+- ARM support (Apple Silicon works via Homebrew natively; no changes needed)
+
+
+=== QUICK REFERENCE — PACKAGE MANAGER COMMANDS ===
+
+winget:   winget install --id <ID> --silent --accept-package-agreements --accept-source-agreements
+brew:     brew install <ID>  OR  brew install --cask <ID>
+apt:      sudo apt-get install -y <ID>
+dnf:      sudo dnf install -y <ID>
+pacman:   sudo pacman -Sy --noconfirm <ID>
+choco:    choco install <ID> -y --no-progress
+
+All wrappers should:
+  - Capture stdout/stderr and stream to ctx.log()
+  - Return InstallResult.SUCCESS / FAILED / SKIPPED
+  - Check if already installed (shutil.which) before running — skip if found
+
