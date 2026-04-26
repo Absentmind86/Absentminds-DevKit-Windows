@@ -265,8 +265,10 @@ Sections completed:
          exit 0; machine fully functional after
   [x] 9. Bootstrap paths — validated (fresh Windows > Windows Update > bootstrap
          fresh.ps1; this was the actual test run, not a re-run)
-  [ ] 10. SmartScreen — not explicitly tested
-  [ ] 11. Regression triggers — n/a (this is the baseline run)
+  [x] 10. SmartScreen — implicitly validated: cold-bootstrap via `irm | iex`
+          (fresh.ps1) completed without SmartScreen block; repo was cloned by
+          git (no MOTW attached), not downloaded via browser
+  [x] 11. Regression triggers — n/a (this is the baseline run)
 
 Known issues / deviations:
   - unity-hub: winget installer hash mismatch (exit 2316632081). Root cause is

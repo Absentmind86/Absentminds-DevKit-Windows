@@ -5,13 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-> **Pre-release:** No tagged releases yet. All entries below are unreleased work
-> targeting **v0.8.0**. A release will be tagged after VM validation per
-> [`docs/RELEASE_TESTING.md`](docs/RELEASE_TESTING.md).
-
 ---
 
-## [Unreleased] — targeting v0.8.0-phase4
+## [0.8.0-phase4] — 2026-04-25
 
 ### Breaking changes
 - **`--winutil-latest` CLI flag removed.** Sanitization is now native PowerShell;
@@ -109,7 +105,42 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **`am-devkit.toml`** header comment clarified: "NOT currently read by
   installer — authoritative version in VERSION file."
 
+### Added
+- **`scripts/sanitize-restore.ps1`** — reverses all sanitization tweaks and
+  restores Windows registry/service defaults. Self-elevates via UAC. Irreversible
+  steps (temp file deletion, DISM cleanup) are noted in output.
+- **GUI "Restore Windows defaults" button** — always-visible button in the
+  Sanitization section of the Options tab; launches `sanitize-restore.ps1` in a
+  new console with UAC elevation.
+- **Already-sanitized skip** — `core/sanitize.py` reads `devkit-manifest.json`
+  before running; if a prior `am-sanitize installed` entry exists, the layer is
+  skipped with a clear message instead of re-applying all tweaks.
+- **Pre-install detection pre-checks** — skip tools that are already installed
+  without invoking the underlying tool:
+  - `scoop-cli-bundle`: checks scoop shims dir for all 7 tools (bat, rg, fd,
+    fzf, jq, lazygit, delta) — shims are not on the elevated-process PATH so
+    `shutil.which` would always miss them
+  - `pyenv-win`: also probes scoop shims alongside PATH
+  - `wsl-prereq`: queries DISM feature state before enabling; skips the 2-5 min
+    DISM run if both features are already enabled
+  - `pip-ml-base`: `pip show` pre-check; skips if all 6 packages present
+  - `pytorch / torch-directml`: `pip show` pre-check; skips if torch pkg present
+  - `docker permissions fix`: skips `takeown`/`icacls` if `docker.exe` on PATH
+- **Known-benign PATH conflict notes** — `scripts/path_auditor.py` now maps
+  `klist.exe`, `kubectl.exe`, and `code-tunnel.exe` to specific explanations
+  instead of the generic "reorder PATH" hint. These shadows are expected when a
+  full dev stack is installed; the HTML report now says so clearly.
+
 ### Fixed
+- **`bootstrap/install.ps1` pip noise** — added `-q` flag to `pip install
+  -r requirements.txt`; suppresses "Requirement already satisfied" output when
+  dependencies are already present.
+- **`scripts/sanitize.ps1` encoding crash** — em dash `—` in the completion
+  message caused a PowerShell 5.1 parse error (`MissingEndCurlyBrace`) because
+  PS 5.1 reads scripts as Windows-1252 and choked on the UTF-8 multibyte
+  character. Replaced with an ASCII hyphen.
+- **`unity-hub` detector** — `shutil.which("Unity Hub.exe")` never resolves
+  (spaces in name; not on PATH). Replaced with direct `Program Files` path checks.
 - **Flet version check false positive** — `bootstrap/install.ps1` incorrectly
   flagged `flet-core` / `flet-desktop` at `0.25.2` as needing a downgrade
   because the check compared the package *name* (not `flet`) rather than just
